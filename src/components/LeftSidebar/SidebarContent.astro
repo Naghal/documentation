@@ -43,7 +43,7 @@ const currentPageNoLangNoVer =
 					<MenuIcon icon={section.icon} />
 					<span class="ml-2">{section.text}</span>
 				</div>
-				<div>
+				<div class="expand">
 					{!section.hideChevron && (
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -79,18 +79,18 @@ const currentPageNoLangNoVer =
 	))
 }
 
-<!-- <script>
+<script>
 	const menuItems = document.querySelectorAll('.menu-item');
 	menuItems.forEach((menuItem) => {
-		const link = menuItem.querySelector('a');
+		const link = menuItem.querySelector('.expand');
 		const submenu = menuItem.querySelector('.submenu');
 
-		// link.addEventListener('click', (event) => {
-		// 	// event.preventDefault();
-		// 	menuItem.classList.toggle('active');
-		// });
+		link.addEventListener('click', (event) => {
+			event.preventDefault();
+			menuItem.classList.toggle('active');
+		});
 	});
-</script> -->
+</script>
 <style lang="scss">
 	.menu-item a {
 		color: var(--theme-readable-grey);
@@ -106,13 +106,23 @@ const currentPageNoLangNoVer =
 		display: block;
 		margin: 0.5rem 0;
 	}
-	.menu-item .submenu li:hover {
+
+	.menu-item .submenu a {
+		padding: 0.3rem;
+		display: block;
+		margin: 0.1rem 0;
+	}
+	.menu-item a:hover, .menu-item .submenu li:hover {
 		background: var(--theme-gray-opacity);
 		border-radius: var(--theme-border-radius);
 	}
 
-	.menu-item .menu-item.active > a {
+	.menu-item.active > a {
 		background-color: var(--theme-accent-opacity);
+	}
+
+	.menu-item.active .expand {
+		transform: rotate(90deg);
 	}
 	.submenu a.active {
 		background-color: #eee;
