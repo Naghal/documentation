@@ -1,0 +1,69 @@
+---
+titre: "Configuration de OpenReplay"
+metaTitle: "Configuration de OpenReplay"
+metaDescription: "Comment configurer rapidement OpenReplay et commencer à enregistrer des sessions et des métriques."
+---
+import YoutubeVideo de '~/components/YoutubeVideo.astro'
+import IconText de '~/components/Card/IconText.astro'
+
+<YoutubeVideo title="Regardez comment démarrer avec OpenReplay"
+  description="Si vous n'aimez pas lire, vous pouvez suivre ce tutoriel vidéo qui vous montre comment démarrer avec OpenReplay en 3 minutes ou moins"
+  videoURL="https://www.youtube.com/watch?v=EWbtMK3qK30"
+  />
+
+Commencer avec OpenReplay est simple.
+
+Si vous souhaitez regarder un tutoriel rapide sur la façon de commencer, utilisez [cette vidéo YouTube] (https://www.youtube.com/watch?v=EWbtMK3qK30), sinon continuez à lire pour plus de détails.
+
+Il existe 2 façons de mettre OpenReplay en service: en utilisant le script ou le package npm.
+
+## Utilisation du script
+
+Copiez / collez le code directement dans la balise `</head>` de votre application web. Le script peut être trouvé dans le tableau de bord OpenReplay sous 'Préférences> Projets' et est unique à chaque projet.
+
+Si votre site Web prend en charge Google Tag Manager, vous pouvez suivre le [guide pas à pas GTM] ( / integrations / google-tag-manager).
+
+## Utilisation de NPM
+
+Tout d'abord, installez le package npm.
+
+
+```bash
+npm i @openreplay/tracker
+```
+
+
+Ensuite, initialisez le package à partir du point d'entrée de votre codebase et démarrez le suivi. Vous devez définir l'option `projectKey` dans le constructeur. Sa valeur peut être trouvée dans votre tableau de bord OpenReplay sous 'Préférences> Projets'.
+
+### Si votre site Web est une application Web unique (SPA)
+
+
+```js
+import OpenReplay from '@openreplay/tracker';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.start();
+```
+
+
+### Si votre application Web est rendue côté serveur (SSR)
+
+Suivez le code ci-dessous si votre application Web est rendue côté serveur (SSR) (c'est-à-dire NextJS, NuxtJS). Assurez-vous que `tracker.start()` est appelé une fois que l'application est démarrée (dans `useEffect` ou `componentDidMount`).
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+//...
+const tracker = new OpenReplay({
+      projectKey: PROJECT_KEY
+});
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, []);
+}
+```
+

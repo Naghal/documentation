@@ -1,0 +1,177 @@
+---
+titre: "Suivi des changements d'état avec le plugin Zustand"
+metaTitle: "Zustand"
+metaDescription: "Suivi des changements d'état avec le plugin Zustand"
+---
+Zustand est un remplacement très rapide et minimaliste pour les solutions de gestion d'état comme Redux. Avec notre [plugin Zustand](https://www.npmjs.com/package/@openreplay/tracker-zustand), vous pouvez suivre les changements d'état tout au long du cycle de vie de votre application.
+
+## Installation du plugin
+
+Le plugin peut facilement être installé avec la commande suivante:
+
+
+```jsx
+npm i @openreplay/tracker-zustand
+```
+
+
+## Utilisation du plugin sur une application Next.js
+
+Pour cet exemple, nous allons utiliser la même application affichée sur le [tutoriel Next.js pour notre tracker](https://docs.openreplay.com/tutorials/next) donc si vous voulez plus de détails sur le fournisseur de contexte utilisé, consultez d'abord celui-ci.
+
+**Note**: le code source complet de cet exemple est situé dans ce [dépôt Github](https://github.com/deleteman/nextjs-commerce-example/tree/zustand-store), consultez-le si vous avez besoin de plus de détails.
+
+Le fournisseur de contexte que j'utilise permet la configuration des plugins Tracker, donc après avoir installé le plugin, nous modifierons le fichier _app.tsx en ajoutant l'instruction d'importation ci-dessous:
+
+
+```jsx
+import trackerZustand from '@openreplay/tracker-zustand'
+```
+
+
+Et ensuite, la fonction principale App devrait ressembler à ceci:
+
+
+```jsx
+export default function MyApp({ Component, pageProps }: AppProps) {
+  const Layout = (Component as any).Layout || Noop
+
+  useEffect(() => {
+    document.body.classList?.remove('loading')
+  }, [])
+
+  let plugins = [
+    {
+      fn: trackerZustand,
+      name: 'zustand',
+    },
+  ]
+
+  return (
+    <TrackerProvider
+      config={{
+        plugins
+      }}
+    >
+      <Head />
+      <ManagedUIContext>
+        <Layout pageProps={pageProps}>
+          <Component {...pageProps} />
+        </Layout>
+      </ManagedUIContext>
+    </TrackerProvider>
+  )
+}
+```
+
+
+Cela initialisera automatiquement le plugin avec le tracker et rendra également disponible les données renvoyées par l'exécution de la fonction principale du plugin.
+
+La prochaine chose à faire est de créer un magasin, nous ajouterons des produits du site e-commerce à ce magasin dans une minute.
+
+### Création d'un magasin avec le plugin Zustand
+
+L'utilisation du plugin nécessite que vous modifiez la manière dont vous instanciez normalement un magasin Zustand, alors n'hésitez pas à copier-coller le code suivant comme modèle:
+
+
+```jsx
+import create from 'zustand'
+
+const productStore = null
+export const useProductsStore = (logger) => {
+  if (!productStore) {
+    //use a singleton pattern to make sure we only create the store the first time around
+    productStore = createProductStore(logger)
+  }
+  return productStore
+}
+
+function createProductStore(logger) {
+  return create(
+    logger((set) => ({
+      products: [],
+      addProduct: (p) =>
+        set((state) => {
+          const prodFound = state.products.find((prod) => {
+            return p.id == prod.id
+          })
+          if (prodFound) {
+            p.amount = prodFound.amount + 1
+          } else {
+            p.amount = 1
+          }
+
+          return {
+            products: [...state.products.filter((prod) => p.id != prod.id), p],
+          }
+        }),
+    }))
+  )
+}
+```
+
+
+La fonction exportée créera le magasin la première fois qu'elle sera utilisée, mais ensuite, elle renverra simplement celui existant.
+
+D'autre part, la fonction createProductStore créera le magasin, définira la logique pour la méthode addProduct et utilisera la fonction journal que nous lui fournissons. Ce journal, comme vous l'avez probablement deviné, est celui que nous avons reçu en utilisant le plugin Zustand.
+
+Avec le magasin prêt, nous pouvons commencer à ajouter des produits.
+
+## Ajout de produits à notre magasin
+
+Le magasin exporte la méthode addProduct, qui s'occupe de suivre les produits de notre panier.
+
+Pour importer la fonction dans votre code, vous devez:
+
+1. Importer et utiliser le fournisseur de contexte Tracker.
+2. Obtenez l'attribut pluginsReturnedValue du contexte.
+3. Utilisez-le pour appeler la méthode zustand (remarquez que la méthode porte le nom de l'attribut name lorsque nous configurons le plugin ci-dessus), et passez une chaîne d'attributs pour donner un nom au magasin (ce nom sera utilisé lors de la relecture).
+4. La méthode zustand renverra le journal que nous utiliserons lors de l'appel du hook useProductStore de zustand (celui que nous avons créé pour le magasin).
+
+Tout cela semble trop, mais essentiellement, cela se traduit par:
+
+
+```jsx
+const { pluginsReturnedValues } = useContext(TrackerContext)
+
+const useProductStoreTracked = useProductsStore(
+  pluginsReturnedValues.zustand('products_store')
+)
+const { addProduct } = useProductStoreTracked()
+```
+
+
+Maintenant, vous pouvez simplement appeler la méthode addProduct et elle ajoutera les produits du panier au magasin.
+
+## Lecture des données du magasin
+
+Comme vous pouvez probablement le deviner, si vous voulez lire des données du magasin Zustand, vous devez effectuer le même ensemble d'étapes. Mais au lieu de prendre la méthode addProduct, nous allons déconstruire le tableau de produits.
+
+Comme ceci:
+
+
+```jsx
+const { pluginsReturnedValues } = useContext(TrackerContext)
+
+const useProductStoreTracked = useProductsStore(
+  pluginsReturnedValues.zustand('products_store')
+)
+const { products } = useProductStoreTracked()
+```
+
+
+Vous pouvez ensuite itérer normalement sur les produits:
+
+
+```jsx
+<div>
+  {products.map((p: Product, idx: Number) => {
+    return (
+      <div key={+idx}>
+        {p.name}({p.amount})
+      </div>
+    )
+  })}
+</div>
+```
+

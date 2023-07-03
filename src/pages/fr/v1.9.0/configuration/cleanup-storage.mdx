@@ -1,0 +1,38 @@
+---
+titre: "Nettoyage du stockage"
+metaTitle: "Nettoyage du stockage"
+metaDescription: "Supprimez en vrac les enregistrements de la base de données et nettoyez votre stockage."
+---
+
+## Stockage des enregistrements
+
+Chaque enregistrement existe sous la forme d'un fichier et d'une entrée dans la base de données. OpenReplay déverse ce qui est nécessaire pour rejouer une session (mutations DOM, coordonnées de la souris, journaux de la console, activité réseau et bien plus encore) dans un seul fichier. Ces fichiers sont par défaut stockés sur votre instance, ils constituent donc la majeure partie de son stockage.
+
+Les métadonnées de la session seront stockées dans la base de données PostgreSQL à jamais, mais après 180 jours, le fichier contenant l'enregistrement sera expiré / supprimé via une politique de cycle de vie minio.
+
+### Modifier la politique de cycle de vie par défaut
+
+Vous pouvez modifier la politique de cycle de vie par défaut de cette façon:
+
+1. Exécutez `k9s -n db`
+2. Utilisez les touches fléchées du clavier pour naviguer dans la liste et accéder au conteneur `minio-*`
+3. Appuyez sur `s` pour avoir un accès shell au conteneur Minio (stockage d'objets)
+4. Exécutez `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+5. Exécutez `mc ilm set --id mobs --expiry-days 14 minio/mobs` (c'est-à-dire nettoyer automatiquement les enregistrements 14 jours après leur création)
+6. Utilisez `exit` pour quitter le conteneur Minio
+7. Exécutez `:quit` pour quitter l'interface de ligne de commande Kubernetes
+
+## Nettoyage manuel
+
+### Base de données (PostgeSQL)
+
+Utilisez la requête SQL ci-dessous si vous souhaitez nettoyer les données de votre base de données (PostgreSQL). Remplacez le "timestamp epoch (millisecondes)" par la date à partir de laquelle conserver les enregistrements. C'est une suppression en cascade, donc tous les enregistrements ainsi que leurs événements correspondants seront supprimés de la base de données.
+
+> **Important:** Cela se fait à vos risques et périls, alors soyez extrêmement prudent lors de l'exécution de telles actions dans la base de données.
+
+
+```plsql
+--- Cascade delete all sessions and their related events captured before Jan 1st, 2021
+DELETE FROM public.sessions WHERE start_ts < 1609459200000;
+```
+

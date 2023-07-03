@@ -1,0 +1,173 @@
+---
+titre: "Suivi des changements d'état avec le plugin Pinia"
+metaTitle: "Suivi des changements d'état avec le plugin Pinia"
+metaDescription: "Gardez une trace de vos changements d'état lors de l'utilisation de Pinia avec le plugin Pinia"
+minVersion: "1.6.0"
+---
+import Aside from '~/components/Aside.astro'
+import YoutubeVideo from '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="Regardez comment suivre l'état avec Pinia"
+  description="Si vous n'aimez pas lire, vous pouvez suivre ce tutoriel vidéo qui vous montre comment suivre l'état de vos applications Vue lorsque vous utilisez Pinia"
+  videoURL="https://youtu.be/0TE5dfzz4-c"
+/>
+
+Pinia est la bibliothèque de gestion d'état de remplacement pour les projets Vue. Là où vous utilisiez VueX, vous utiliserez maintenant Pinia. Avec notre [plugin Pinia] (/plugins/pinia), vous pouvez suivre les changements d'état tout au long du cycle de vie de votre application.
+
+## Installation du plugin
+
+Le plugin peut facilement être installé avec la commande suivante:
+
+
+```jsx
+npm i @openreplay/tracker-vuex
+```
+
+
+## Utilisation du plugin à l'intérieur de votre application Vue
+
+Pour cet exemple, nous utiliserons une application Vue d'exemple pour montrer comment vous pouvez ajouter et interagir avec ce plugin à l'intérieur d'une application réelle.
+
+**Remarque**: le code source complet de cet exemple est situé dans ce [dépôt GitHub] (https://github.com/deleteman/openreplay-vue-pinia-example), vérifiez-le si vous avez besoin de plus de détails.
+
+Après avoir installé le plugin, nous modifierons le fichier `main.js` en ajoutant la déclaration d'importation ci-dessous:
+
+
+```jsx
+import trackerVuex from '@openreplay/tracker-vuex/cjs';
+```
+
+
+Et ensuite, nous utiliserons la fonction `startTracker` pour instancier le suiveur et utiliser le plugin en même temps.
+
+Le résultat de l'appel de cette fonction sera un objet contenant les résultats de l'utilisation de la méthode `use` avec le plugin.
+
+**Remarque** comment le nom de la propriété déstructurée est le même que la valeur de la propriété `name`. Tant que vous gardez les deux identiques, vous êtes bien.
+
+
+```jsx
+const {piniaPlugin} = startTracker({
+    projectKey: "<your project key>",
+    plugins: [{
+        name: 'piniaPlugin',
+        fn: trackerVuex
+    }]
+})
+```
+
+
+La prochaine chose à faire est de créer un enveloppeur de magasin nommé que nous utiliserons pour configurer le plugin sur le magasin souhaité plus tard.
+
+
+```jsx
+const piniaStoreWrapper = piniaPlugin("products")
+saveStore(piniaStoreWrapper)
+```
+
+
+L'enveloppeur de magasin Pinia devra plus tard être utilisé avec le magasin que nous décidons de suivre. Cependant, le magasin n'est pas encore créé à ce stade, nous allons donc le sauvegarder à travers la fonction `saveStore`.
+
+### Fonctions utilitaires
+
+Avant de continuer, examinons les fonctions `saveStore` et `startTracker`.
+
+Le premier fait partie du module `storesManager`, qui ressemble à ceci:
+
+
+```jsx
+let storeWrapper = null;
+
+export function saveStore(s) {
+    storeWrapper = s;
+}
+
+export function getStore(store) {
+    return storeWrapper;
+}
+```
+
+
+Ce module nous permettra d'utiliser l'enveloppeur de magasin Pinia que nous avons créé avant, quelque part ailleurs.
+
+Quant à la fonction `startTracker`, le code ressemble à ceci:
+
+
+```jsx
+export function startTracker(config) {
+    console.log("Starting tracker...")
+
+    console.log("Project key used: ", config.projectKey)
+    const trackerConfig = {
+        projectKey: config.projectKey,
+         //ingestPoint: config.ingestPoint,
+        __DISABLE_SECURE_MODE: true
+    }
+
+    const tracker = new Tracker(trackerConfig);
+
+    const pluginReturns = {}
+    config?.plugins.forEach( p => {
+        console.log("Using plugin...", p.name)
+        pluginReturns[p.name] = tracker.use(p.fn())
+    })
+ 
+    tracker.start();
+    return {
+        tracker,
+        ...pluginReturns
+    }
+}
+```
+
+
+Cette fonction instancie le suiveur avec la configuration que nous lui donnons. Remarquez comment j'ai laissé l'option `ingestPoint` commentée, c'est parce que nous traitons directement avec la version SaaS, mais si vous souhaitez utiliser ce code avec une version auto-hébergée, vous devrez la spécifier et elle devrait ressembler à quelque chose de similaire à ceci: `<your-instance>.yourhost/ingest`
+
+### Suivi de vos magasins Pinia
+
+Une fois que tout le code de configuration est prêt, allez à l'endroit où vous utilisez le magasin, dans le cas de notre exemple, modifions le fichier `App.vue` pour appeler la fonction `getStore`, qui renverra l'enveloppeur de magasin que nous avons sauvegardé avant.
+
+Et nous l'utiliserons pour envelopper le magasin que nous voulons suivre:
+
+
+```jsx
+<template>
+  <!-- template code -->
+</template>
+
+<script lang="ts">
+import { computed, defineComponent, onMounted, ref } from 'vue'
+import { Product, useProductStore } from './store/products'
+import { useCartStore } from './store/cart'
+import {getStore} from './store/storesManager.js'
+
+export default defineComponent({
+  setup() {
+   
+    const productStore = useProductStore()
+    const loading = ref(true)
+    //we get the wrapper here
+	  const storeWrapper = getStore()
+
+    onMounted(async () => {
+      await productStore.fetchAll()
+      loading.value = false
+    })
+
+    const cartStore = useCartStore()
+
+		//we wrap the cart store here
+    storeWrapper(cartStore)
+    return {
+      products: computed(() => productStore.list),
+      cart: computed(() => cartStore.formattedCart),
+      total: computed(() => cartStore.total),
+      loading,
+      add: (product: Product) => cartStore.add(product),
+      remove: (product: Product) => cartStore.remove(product),
+    }
+  }
+})
+
+</script>
+```
+

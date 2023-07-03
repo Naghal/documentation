@@ -1,0 +1,138 @@
+---
+titre: "Utiliser OpenReplay avec Next.js"
+metaTitle: "Ajouter le suiveur OpenReplay à votre application Next.js"
+metaDescription: "Apprenez à faire fonctionner le suiveur sur votre application Next.js"
+---
+import GoDeeperFooter from '~/components/go-deeper-footer.astro'
+
+Faire fonctionner le suiveur sur une application Next.js est assez simple. Comme Next.js fonctionne sur React, le processus est assez similaire, la principale difficulté vient des capacités de rendu côté serveur de Next.js.
+
+Mais une fois que vous comprenez comment elles fonctionnent et comment structurer votre code client uniquement, vous serez en train de suivre vos utilisateurs en un rien de temps.
+
+## Ajout du code de suivi
+
+Bien que vous puissiez obtenir une version copier-coller du code directement à partir de la plate-forme lorsque vous créez un nouveau projet, ce code est trop basique et peut ne pas suivre les meilleures pratiques attendues par votre équipe ou votre entreprise.
+
+Au lieu de cela, vous pouvez créer un fournisseur de contexte qui permet à tous les composants enveloppés par celui-ci de démarrer le processus de suivi:
+
+
+```jsx
+import { createContext } from "react"
+import Tracker from '@openreplay/tracker';
+import {v4 as uuidV4} from 'uuid'
+import { useReducer } from "react"
+
+export const TrackerContext = createContext()
+
+function defaultGetUserId() {
+   return uuidV4() 
+}
+
+function newTracker(config) {
+    const getUserId = (config?.userIdEnabled && config?.getUserId) ? config.getUserId : defaultGetUserId
+    let userId = null;
+
+    const trackerConfig = {
+        projectKey: config?.projectKey || process.env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY
+    }
+
+    const tracker = new Tracker(trackerConfig);
+
+    if(config?.userIdEnabled) {
+        userId = getUserId()
+        tracker.setUserID(userId)
+    }
+    return tracker
+
+}
+
+function reducer(state, action) {
+        switch(action.type) {
+            case 'init': {
+                if(!state.tracker) {
+                    console.log("Instantiaing the tracker for the first time...")
+                    return {...state, tracker: newTracker(state.config)}
+                }
+                return state
+            }
+            case 'start': {
+                console.log("Starting tracker...")
+                state.tracker.start()
+                return state
+            }
+        }
+    }
+
+export default function TrackerProvider({children, config = {}}) {
+    let [state, dispatch] = useReducer(reducer, {tracker: null, config})
+    let value = {
+        startTracking: () => dispatch({type: 'start'}),
+        initTracker: () => dispatch({type: 'init'})
+    }
+
+    return <TrackerContext.Provider value={value}>{children}</TrackerContext.Provider>
+}
+```
+
+
+Ce fournisseur met à disposition de l'utilisateur 2 méthodes:
+
+- `initTracker`: qui instancie le suiveur avec la configuration fournie.
+- `startTracking`: qui déclenche le début du processus de suivi.
+
+Ce fournisseur prend également en charge un objet "configuration" que vous pouvez étendre pour des fonctionnalités futures. Cet exemple vous montre comment activer, en option, la possibilité d'identifier de manière unique les utilisateurs. Vous pouvez utiliser un UUID par défaut qui serait unique pour chaque utilisateur chaque fois qu'ils visitent la page. Vous pouvez également fournir une fonction `getUserId` personnalisée en tant que partie de la configuration.
+
+Avec votre fonction personnalisée, vous pourriez fournir l'ID client de votre magasin, ou l'adresse e-mail de l'utilisateur ou tout ce qui identifie de manière unique l'utilisateur dans votre application. De cette façon, vous pouvez suivre leurs sessions de relecture dans le temps au cas où ils auraient un problème particulier que d'autres ne signalent pas.
+
+💡**Note pour les utilisateurs hébergés en local**: si vous utilisez la version hébergée en local d'OpenReplay, vous devrez également spécifier la propriété de configuration `ingestPoint`. Cette propriété spécifie le point d'ingestion des données du suiveur. Les utilisateurs du cloud n'ont pas besoin de cela, car par défaut, le suiveur saura où se trouve le point d'extrémité de la version SaaS, mais si vous l'hébergez en local, vous devrez le spécifier (ce devrait être quelque chose comme `https://openreplay.mydomain.com/ingest`)
+
+### Gestion de la "projectKey" dans votre code
+
+Comme note, la `projectKey` que vous configurez est celle fournie par la plate-forme OpenReplay. Cette valeur ne doit pas être stockée en dur dans votre code pour des raisons de sécurité, mais plutôt dans un fichier / système de configuration.
+
+Pour cet exemple, je profite des fichiers `.env` de Next. Ce que vous devez comprendre, c'est que si vous ne préfixez pas la variable d'environnement avec `NEXT_PUBLIC`, votre code client (le suiveur) n'y aura pas accès.
+
+Si cela n'est pas acceptable, vous pouvez utiliser `getStaticProps` à partir de la première page que vos utilisateurs visitent pour obtenir cette valeur avant d'instancier le suiveur. Vous pouvez voir les deux exemples ci-dessous.
+
+## Utilisation du contexte du suiveur
+
+Importez et enveloppez votre application avec le `TrackerProvider` que nous avons créé avant, comme ceci:
+
+
+```jsx
+import '../styles/globals.css'
+import TrackerProvider from '../context/trackerContext'
+
+function MyApp({ Component, pageProps }) {
+
+  return <TrackerProvider>
+        <Component {...pageProps} />
+    </TrackerProvider>
+}
+
+export default MyApp
+```
+
+
+Ceci est le fichier `_app.js`, qui agit comme point d'entrée pour l'ensemble de l'application.
+
+Et ensuite, vous pouvez déclencher le suivi depuis n'importe quel composant que vous souhaitez, comme ceci:
+
+
+```jsx
+import { useContext, useEffect } from 'react'
+import { TrackerContext } from '../context/trackerContext'
+import styles from '../styles/Home.module.css'
+
+export default function YourComponent({projectKey}) {
+    
+    const {initTracker, startTracking} = useContext(TrackerContext)
+    
+    useEffect( () => {
+       initTracker()
+       startTracking()
+    }, [])
+//.... rest of your code
+}
+```
+

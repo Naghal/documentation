@@ -1,0 +1,77 @@
+---
+Titre: "CloudWatch"
+MetaTitre: "Intégration CloudWatch"
+MetaDescription: "Comment intégrer CloudWatch avec OpenReplay et voir les erreurs arrière-plan avec les reprises de session."
+---
+
+Comment intégrer CloudWatch avec OpenReplay et voir les erreurs arrière-plan avec les reprises de session.
+
+## 1. Créer un compte de service
+
+1. Connectez-vous à votre compte [AWS] (https //console.aws.amazon.com).
+2. Accédez au tableau de bord [IAM] (https://console.aws.amazon.com/iam/home).
+3. Cliquez sur *Utilisateurs*.
+4. Cliquez sur le bouton *Ajouter un utilisateur*.
+5. Définissez le nom sur "openreplay_cw".
+6. Dans le type d'accès, sélectionnez *Accès programmatique*.
+7. Cliquez sur le bouton *Suivant: Autorisations*.
+8. Choisissez *Attacher des politiques existantes directement*
+9. Dans la liste des autorisations, choisissez *CloudWatchReadOnlyAccess*.
+10. Cliquez sur le bouton *Suivant: Tags*.
+11. Cliquez sur le bouton *Suivant: Aperçu*.
+12. Cliquez sur le bouton *Créer un utilisateur*.
+13. Copiez la clé d'accès `Access key ID` et la clé secrète d'accès `Secret access key`.
+
+## 2. Activer CloudWatch dans OpenReplay
+
+Mettez votre clé d'accès `Access key ID` et votre clé secrète d'accès `Secret access key` dans le tableau de bord OpenReplay sous 'Préférences> Intégration', sélectionnez la région et sélectionnez le groupe de journaux que vous souhaitez suivre dans la liste déroulante.
+
+![Intégration CloudWatch dans OpenReplay] (/static/cloudwatch-1.jpg#center)
+
+## 3. Propager openReplaySessionToken
+
+Pour lier un événement CloudWatch à la session d'utilisateur enregistrée, un jeton unique doit être propagé de votre front-end à votre back-end à chaque fois que vous souhaitez suivre. Cela peut être fait en utilisant une en-tête HTTP personnalisée. Dans l'exemple ci-dessous, nous utilisons la fonction *fetch* pour envoyer cette en-tête.
+
+
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // use window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```
+
+```python
+import sys
+import traceback
+#...
+old_tb = traceback.print_exception
+old_f = sys.stdout
+old_e = sys.stderr
+OPENREPLAY_SESSION_TOKEN = None
+
+class F:
+    def write(self, x):
+        if OPENREPLAY_SESSION_TOKEN is not None and x != '\n':
+            old_f.write(f"[openReplaySessionToken={OPENREPLAY_SESSION_TOKEN}] {x}")
+        else:
+            old_f.write(x)
+
+    def flush(self):
+        pass
+
+def tb_print_exception(etype, value, tb, limit=None, file=None, chain=True):
+    if OPENREPLAY_SESSION_TOKEN is not None:
+        value = type(value)(f"[openReplaySessionToken={OPENREPLAY_SESSION_TOKEN}] " + str(value))
+    old_tb(etype, value, tb, limit, file, chain)
+
+traceback.print_exception = tb_print_exception
+
+sys.stderr = F()
+```

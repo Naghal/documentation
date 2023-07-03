@@ -1,0 +1,83 @@
+Erreur de rapport est très important pour surveiller la stabilité de votre application, repérer les régressions à l'avance et savoir quels problèmes se produisent le plus pour vos utilisateurs. Par défaut, toute exception non capturée est enregistrée sous l'onglet «Erreurs»:
+
+![Erreurs Tab](/static/errors-tab.jpg#center)
+
+De plus, les erreurs enregistrées apparaîtront également dans l'enregistrement de session sous l'onglet «Console» dans DevTools:
+
+![Exceptions Tab](/static/exceptions-tab-in-recording.jpg#center)
+
+## Journalisation manuelle des exceptions
+
+Le suivi OpenReplay prend en charge le journal des 3 types d'erreurs suivants:
+* Exceptions capturées - [Erreur](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)
+* Promesses rejetées - [PromiseRejectionEvent](https://developer.mozilla.org/en-US/docs/Web/API/PromiseRejectionEvent)
+* Événements d'erreur (onError) - [ErrorEvent](https://developer.mozilla.org/en-US/docs/Web/API/ErrorEvent)
+
+Tous les éléments ci-dessus peuvent être signalés à l'aide d'une seule méthode:
+
+
+```js
+tracker.handleError(error, metaObject); // metaObject is optional and is a flat object
+```
+
+
+Examinons un exemple pour chaque type d'erreur:
+
+### Exceptions capturées (Erreur)
+
+Par défaut, les exceptions capturées ne sont pas enregistrées dans l'onglet «Console». Pour signaler une erreur, nous pouvons procéder comme suit:
+
+
+```js
+try {
+    // application code
+}
+catch(err) {
+    // application code that handles the error
+    tracker.handleError(error, metaObject); // metaObject is optional and is a flat object
+}
+```
+
+
+### Promesses rejetées (PromiseRejectionEvent)
+
+Si une promesse est rejetée et que nous voulons signaler l'erreur à OpenReplay, nous pouvons procéder comme suit:
+
+
+```js
+function myFunc() {
+    doSomeAsyncStuff()
+    .then((result) => {
+        // application code
+    })
+    .catch(promiseRejectionErr => {
+        // application code to handle the error
+        tracker.handleError(promiseRejectionErr, metaObject); // metaObject is optional and is a flat object     
+    })
+}
+```
+
+
+### onError (ErrorEvent)
+
+Cet exemple montrera comment signaler une erreur si un 
+```<img>```
+ élément n'a pas été chargé:
+
+
+```html
+<img id="myImg" src="image.gif">
+<p id="demo"></p>
+```
+
+
+
+```js
+document.getElementById("myImg").addEventListener("error", myFunction);
+
+function myFunction(errorEvent) {
+  document.getElementById("demo").innerHTML = "The image could not be loaded.";
+  tracker.handleError(errorEvent, { context: "demo" });
+}
+```
+

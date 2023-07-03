@@ -1,0 +1,102 @@
+---
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+title: "Déployer sur AWS"
+metaTitle: "Déployer sur AWS"
+metaDescription: "Guide étape par étape pour déployer OpenReplay sur Amazon AWS."
+---
+import YoutubeVideo from '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="Regardez comment déployer OpenReplay dans votre infrastructure AWS"
+  description="Si vous n'aimez pas lire, vous pouvez suivre ce tutoriel vidéo vous montrant comment déployer OpenReplay dans AWS"
+  videoURL="https://www.youtube.com/watch?v=0-02jJyL4_A"
+  />
+
+
+La pile OpenReplay peut être installée sur une seule machine et AWS EC2 est un candidat idéal.
+
+## Lancer une instance EC2
+
+1. Allez dans le tableau de bord EC2 AWS
+2. 'Lancer une nouvelle instance'
+3. Sélectionnez votre AMI. Pour ce guide, nous utiliserons *Ubuntu Server 20.04 LTS*
+4. Choisissez votre type d'instance. Les spécifications minimales sont `2 vCPUs, 8 Go de RAM, 50 Go de stockage`, sinon les services de backend OpenReplay ne démarreront tout simplement pas. Nous vous recommandons donc **au moins** le `t3.large` (ou un équivalent), qui est suffisant pour un volume faible / modéré. Si vous attendez un trafic élevé, vous devez le mettre à l'échelle à partir d'ici.
+5. Détails de l'instance: Ajustez les paramètres Réseau / Sous-réseau si nécessaire ou conservez les valeurs par défaut
+6. Ajouter le stockage: Définissez la taille à 50 Go (SSD général (gp2))
+7. Ajouter des tags: Ajustez les paramètres ou conservez les valeurs par défaut
+8. Groupes de sécurité: Conservez la règle SSH existante et ajoutez 2 autres pour HTTP (80) et HTTPS (443) (source: 0.0.0.0/0)
+9. Cliquez sur 'Revoir et lancer'
+10. Créez / téléchargez la clé SSH puis cliquez sur 'Lancer des instances'
+
+## Déployer OpenReplay
+
+1. Assurez-vous que votre instance est `En cours d'exécution` puis connectez-vous à ce dernier:
+
+
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem #! wherever you've saved the SSH key
+INSTANCE_IP=REPLACE_WITH_INSTANCE_PUBLIC_IP
+chmod 400 $SSH_KEY
+ssh -i $SSH_KEY ubuntu@$INSTANCE_IP
+```
+
+
+2. Installez OpenReplay en fournissant le domaine sur lequel il sera exécuté (par exemple DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+## Configurer TLS / SSL
+
+OpenReplay traite des données d'utilisateur sensibles et nécessite donc HTTPS pour fonctionner. Cela est obligatoire, sinon le suivi ne commencera tout simplement pas à enregistrer. La même chose s'applique au tableau de bord, sans HTTPS vous ne pourrez pas rejouer les sessions utilisateur.
+
+La manière la plus simple de gérer SSL dans AWS est de configurer un équilibreur de charge (ELB) et de lancer OpenReplay derrière celui-ci. Une autre option consiste à générer ou à utiliser votre propre certificat SSL et à pointer votre sous-domaine (c'est-à-dire openreplay.mycompany.com) vers l'instance OpenReplay. Plus d'informations sur les deux options ci-dessous.
+
+### Configurer l'équilibreur de charge AWS (option 1)
+
+1. Allez à 'EC2' > 'Équilibreurs de charge'
+2. 'Créer un équilibreur de charge' et choisissez *Application Load Balancer*
+3. Ajoutez un écouteur à HTTPS (conservez uniquement celui-ci) et assurez-vous de sélectionner les mêmes sous-réseaux dans lesquels votre instance OpenReplay est en cours d'exécution.
+4. Choisissez un certificat existant (par exemple *.mycompany.com) ou générez un nouveau à partir du Gestionnaire de certificats AWS (ACM). Vous pouvez également importer le vôtre.
+5. Configurer les groupes de sécurité: Sélectionnez le groupe de sécurité précédemment créé pour l'instance OpenReplay (vous pouvez le trouver dans le tableau de bord EC2 sous l'onglet 'Sécurité')
+6. Configurer l'écouteur et le routage: Conservez le protocole et le port par défaut (`HTTP:80`). Maintenant, créez un nouveau groupe cible. Donnez-lui un nom et sélectionnez `Adresses IP` dans *Type de cible*. Assurez-vous que le *Chemin de contrôle de santé* est défini sur `/healthz` tout en conservant les autres paramètres par défaut. Cliquez sur 'Suivant' pour enregistrer les cibles, ajoutez l'adresse IPv4 privée de OpenReplay (ports `80`) puis ajoutez la cible à la liste (l'adresse IP privée peut être trouvée dans le tableau de bord EC2). Revoir puis cliquez sur 'Créer un groupe cible'.
+7. Maintenant, revenez à la page de création LB et transférez ce nouveau groupe cible à l'écouteur LB.
+8. Revoir puis 'Créer un équilibreur de charge'
+
+Une fois créé, allez à Route 53 (ou votre fournisseur de service DNS) et créez un `A Record` qui pointe vers l'équilibreur de charge à l'aide de son nom DNS (peut être trouvé dans le tableau de bord ELB).
+
+Enfin, activez le `use-forwarded-headers`, en décommentant la ligne ci-dessous dans la section `ingress-nginx`, dans `/var/lib/openreplay/vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      use-forwarded-headers: true
+```
+
+
+Vous êtes maintenant prêt, OpenReplay devrait être accessible de manière sécurisée sur le sous-domaine que vous venez de configurer. Vous pouvez créer un compte en visitant la page `/signup` (c'est-à-dire openreplay.mycompany.com/signup).
+
+### Apporter / générer votre certificat SSL (option 2)
+
+En alternative à la création d'un équilibreur de charge, vous pouvez apporter (ou générer) votre propre certificat SSL.
+
+1. Tout d'abord, allez à Route 53 (ou votre autre fournisseur de service DNS) et créez un `A Record`. Utilisez le domaine que vous avez fourni précédemment lors de l'étape d'installation et pointez-le vers l'instance à l'aide de son adresse IP publique (peut être trouvé dans le tableau de bord EC2).
+
+2. Si vous apportez votre propre certificat, créez un secret SSL à l'aide de la commande suivante: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **Note:** Si vous n'avez pas de certificat, générez-en un, qui se renouvelle automatiquement, pour votre sous-domaine (celui four
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```

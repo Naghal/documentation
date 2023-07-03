@@ -1,0 +1,62 @@
+Titre : "Rapport d'erreur"
+metaTitle : "Rapport d'erreur"
+metaDescription : "Comment fonctionne le rapport d'erreur, ce qui est envoyé à l'onglet «Erreurs» et comment signaler manuellement des erreurs et des exceptions"
+
+Le rapport d'erreur est très important pour surveiller la stabilité de votre application, repérer les régressions à l'avance et connaître les problèmes les plus fréquents rencontrés par vos utilisateurs. Par défaut, toute exception non capturée est enregistrée dans l'onglet «Erreurs» :
+
+![Onglet Erreurs](/static/errors-tab.jpg#center)
+
+De plus, les erreurs enregistrées apparaîtront également dans l'enregistrement de session sous l'onglet «Exceptions» dans DevTools :
+
+![Onglet Exceptions](/static/exceptions-tab-in-recording.jpg#center)
+
+## Journalisation manuelle des exceptions
+
+Le suivi OpenReplay prend en charge le journal des 3 types d'erreurs suivants :
+* Exceptions capturées - [Erreur](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Objets_globaux/Error)
+* Promesses rejetées - [PromiseRejectionEvent](https://developer.mozilla.org/fr/docs/Web/API/PromiseRejectionEvent)
+* Événements d'erreur (onError) - [ErrorEvent](https://developer.mozilla.org/fr/docs/Web/API/ErrorEvent)
+
+Tous les types ci-dessus peuvent être signalés à l'aide d'une seule méthode :
+
+Examinons un exemple pour chaque type d'erreur :
+
+### Exceptions capturées (Erreur)
+
+Par défaut, les exceptions capturées ne sont pas enregistrées dans l'onglet «Erreurs». Pour signaler une erreur, nous pouvons procéder comme suit :
+
+### Promesses rejetées (PromiseRejectionEvent)
+
+Si une promesse est rejetée et que nous souhaitons signaler l'erreur à OpenReplay, nous pouvons procéder comme suit :
+
+### onError (ErrorEvent)
+
+Cet exemple montrera comment signaler une erreur si un élément 
+```js
+tracker.handleError(err);
+```
+ n'a pas pu être chargé :
+
+
+```js
+try {
+    // application code
+}
+catch(err) {
+    // application code that handles the error
+    tracker.handlerError(err);
+}
+```
+
+```js
+function myFunc() {
+    doSomeAsyncStuff()
+    .then((result) => {
+        // application code
+    })
+    .catch(promiseRejectionErr => {
+        // application code to handle the error
+        tracker.handleError(promiseRejectionErr);      
+    })
+}
+```

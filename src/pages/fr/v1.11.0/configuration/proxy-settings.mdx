@@ -1,0 +1,37 @@
+---
+titre: "Paramètres du proxy"
+metaTitle: "Paramètres du proxy"
+metaDescription: "Paramètres pour exécuter OpenReplay derrière un proxy tel que NGINX ou Apache2."
+---
+
+Si vous exécutez OpenReplay derrière un proxy, adaptez votre configuration pour qu'elle ressemble aux paramètres ci-dessous.
+
+## Paramètres NGINX
+
+Assurez-vous que votre proxy envoie les en-têtes `X-Forwarded-For` et `X-Forwarded-Proto`. SSL doit également être activé pour que OpenReplay fonctionne. Le reste de la configuration devrait ressembler à ceci:
+
+
+```nginx
+location / {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_pass http://1.2.3.4; # replace with OpenReplay instance IP
+    }
+```
+
+
+## Paramètres Apache2
+
+Assurez-vous que les modules `proxy`, `proxy_http` et `proxy_html` sont activés. SSL doit également être configuré, le reste des paramètres devrait être similaire à ceci:
+
+
+```apacheconf
+<VirtualHost *:443>
+    ProxyPass / http://1.2.3.4 <!-- replace with instance IP -->
+    RequestHeader set X-Forwarded-Proto expr=%{REQUEST_SCHEME}
+    # SSL + other config here
+</VirtualHost>
+```
+

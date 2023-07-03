@@ -1,0 +1,126 @@
+---
+titre: "Administration OpenReplay"
+metaTitle: "Administration OpenReplay"
+metaDescription: "Comment administrer et gérer facilement votre instance OpenReplay."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+## CLI
+
+Le CLI est utile pour gérer les aspects de base de votre instance OpenReplay, tels que le redémarrage ou la réinstallation d'un service, l'accès aux journaux d'un composant ou simplement pour vérifier l'état de vos services back-end.
+
+Exécutez le CLI avec l'option `-h`:
+
+
+```bash
+openreplay-cli -h
+```
+
+
+Et voyez la liste de toutes les options disponibles:
+
+
+```shellsession
+  ___                   ____            _
+ / _ \ _ __   ___ _ __ |  _ \ ___ _ __ | | __ _ _   _
+| | | | '_ \ / _ \ '_ \| |_) / _ \ '_ \| |/ _` | | | |
+| |_| | |_) |  __/ | | |  _ <  __/ |_) | | (_| | |_| |
+ \___/| .__/ \___|_| |_|_| \_\___| .__/|_|\__,_|\__, |
+      |_|                        |_|            |___/
+
+[INFO]
+  Usage: openreplay [ -h | --help ]
+                    [ -s | --status ]
+                    [ -i | --install DOMAIN_NAME ]
+                    [ -u | --upgrade ]
+                    [ -U | --deprecated-upgrade /path/to/old_vars.yaml]
+                    [ -r | --restart ]
+                    [ -R | --Reload ]
+                    [ -c | --cleanup N (in days) ]
+                    [ -e | --edit ]
+                    [ -p | --install-packages ]
+                    [ -l | --logs SERVICE ]
+         Services: alerts assets assist chalice
+                   db ender frontend heuristics
+                   http integrations nginx-controller
+                   peers sink sourcemapreader storage
+```
+
+
+Le backend OpenReplay repose sur les composants / services ci-dessous:
+
+| Service | Description |
+|---------|-------------|
+| http | Ingeste des événements et des enregistrements de session |
+| sink | Lit les données du pipeline de streaming (Redis ou Kafka pour la version entreprise) et les insère dans un stockage temporaire (NFS) |
+| stockage | Déplace les fichiers d'enregistrement de session temporaires vers le service de stockage d'objets |
+| actifs | Pour mettre en cache des actifs (CSS, polices et icônes) pour afficher correctement les enregistrements |
+| db | Lit et écrit dans diverses bases de données (Postgres + ClickHouse pour la version entreprise) |
+| ender | Termine les sessions d'utilisateur si elles sont inactives ou déconnectées |
+| chalice | API pour servir le frontend |
+| alertes | Envoie des notifications (e-mail, slack, in-app, webhook) lorsqu'un seuil d'utilisateur est atteint sur l'un des indicateurs de performance |
+| intégrations | Pousse et tire des données des API tierces prises en charge (Sentry, Elastic, GitHub, Jira, etc.) |
+
+## Commandes utiles
+
+- Vérifiez l'état de santé d'OpenReplay
+
+
+```sh
+openreplay -s
+```
+
+
+- Vérifiez les journaux des services
+
+
+```sh
+openreplay -l <service name>
+```
+
+
+## Augmenter la capacité du service
+
+Il est possible d'augmenter la capacité de n'importe quel service en remplaçant les valeurs d'allocation de mémoire / CPU par défaut. Ceux-ci sont déterminés lors du processus de configuration en fonction de la capacité de votre instance et devraient répondre aux besoins de la plupart des installations.
+
+Si vous avez un volume élevé et une grosse machine, modifiez simplement le fichier `/var/lib/openreplay/vars.yaml` et remplacez les ressources du service. Dans l'exemple ci-dessous, nous le faisons pour le travailleur `http`. Mais cela peut être fait pour n'importe quel service (c'est-à-dire sink, storage, postgresql, redis, etc.) en décommentant et en mettant à jour le bloc ci-dessous. Si vous devez le faire pour plus d'un service, copiez simplement et renommez / mettez à jour le même bloc (en tenant compte des doublons).
+
+
+```yaml
+http:
+  resources:
+    limits:
+      cpu: 4096m
+      memory: 8192Mi
+    requests:
+      cpu: 1024m
+      memory: 2056Mi
+```
+
+
+Enfin, réinstallez le service pour que les nouvelles limites prennent effet (vos données ne seront pas perdues):
+
+
+```bash
+ openreplay-cli -R
+```
+
+
+## Désinstaller OpenReplay
+
+Exécutez les commandes ci-dessous pour désinstaller OpenReplay:
+
+
+```bash
+sudo k3s-uninstall.sh
+```
+
+
+Toute la configuration est stockée dans `/var/lib/openreplay/`.
+
+
+```
+sudo rm -rf /var/lib/openreplay/openreplay
+```
+

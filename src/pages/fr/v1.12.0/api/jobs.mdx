@@ -1,0 +1,182 @@
+---
+titre: "Emplois"
+metaTitle: "Emplois"
+metaDescription: "Comment gérer les tâches de suppression des données d'utilisateur."
+---
+
+## Lister tous les emplois
+
+Récupérez tous les emplois, y compris ceux qui sont terminés ou annulés.
+
+### Méthode
+`GET`
+
+### URL
+`/api/v1/:projectKey/jobs`
+
+### En-têtes de demande
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: La clé peut être trouvée dans 'Préférences' > 'Compte' > 'Clé API de l'organisation'.
+
+### Codes de statut
+
+`200`: Réponse envoyée sous forme de JSON dans le corps
+
+### Exemple de demande
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/jobs \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### Exemple de réponse
+
+
+```json
+{
+  "data": [
+    {
+      "jobId": 3451,
+      "description": "Delete user sessions of userId = shekar@example.com",
+      "status": "scheduled",
+      "projectId": 1,
+      "action": "delete_user_data",
+      "referenceId": "mehdi@openreplay.com",
+      "createdAt": 1623912955277,
+      "updatedAt": 1623912955277,
+      "startAt": 1623954600000,
+      "errors": null
+    },
+    {
+      "jobId": 3452,
+      "description": "Delete user sessions of userId = shekar@example.com",
+      "status": "cancelled",
+      "projectId": 1,
+      "action": "delete_user_data",
+      "referenceId": "mehdi@openreplay.com",
+      "createdAt": 1623912962910,
+      "updatedAt": 1623913015276,
+      "startAt": 1623954600000,
+      "errors": null
+    }
+  ]
+}
+```
+
+
+## Obtenir les détails de l'emploi
+
+Renvoie le statut de l'emploi et d'autres détails tels que `createdAt`, `referenceId` et `errors`.
+
+### Méthode
+`GET`
+
+### URL
+`/api/v1/:projectKey/jobs/:jobId`
+
+### Paramètres
+
+| Nom | Type | Description |
+|----------|-------------|-------------|
+| jobId | chaîne | L'ID renvoyé par l'appel de suppression de l'utilisateur (requis) |
+
+### En-têtes de demande
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: La clé peut être trouvée dans 'Préférences' > 'Compte' > 'Clé API de l'organisation'.
+
+### Codes de statut
+
+`200`: Réponse envoyée sous forme de JSON dans le corps
+
+### Exemple de demande
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/jobs/3451\
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### Exemple de réponse
+
+
+```json
+{
+  "data": {
+    "jobId": 3451,
+    "description": "Delete user sessions of userId = shekar@example.com",
+    "status": "scheduled",
+    "projectId": 1,
+    "action": "delete_user_data",
+    "referenceId": "mehdi@openreplay.com",
+    "createdAt": 1623912955277,
+    "updatedAt": 1623912955277,
+    "startAt": 1623954600000,
+    "errors": null
+  }
+}
+```
+
+
+## Annuler l'emploi
+
+Annulez un emploi s'il n'a pas encore commencé ou est toujours en cours.
+
+### Méthode
+`DELETE`
+
+### URL
+`/api/v1/:projectKey/jobs/:jobId`
+
+### Paramètres
+
+| Nom | Type | Description |
+|----------|-------------|-------------|
+| jobId | chaîne | L'ID renvoyé par l'appel de suppression de l'utilisateur (requis) |
+
+### En-têtes de demande
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: La clé peut être trouvée dans 'Préférences' > 'Compte' > 'Clé API de l'organisation'.
+
+### Codes de statut
+
+`200`: Réponse envoyée sous forme de JSON dans le corps
+`501`: Renvoyé si l'emploi ne peut pas être annulé
+
+### Exemple de demande
+
+
+```shell
+curl -X DELETE \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/jobs/3452 \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### Exemple de réponse
+
+
+```json
+{
+  "data": {
+    "jobId": 3452,
+    "description": "Delete user sessions of userId = shekar@example.com",
+    "status": "cancelled",
+    "projectId": 1,
+    "action": "delete_user_data",
+    "referenceId": "mehdi@openreplay.com",
+    "createdAt": 1623912962910,
+    "updatedAt": 1623913015276,
+    "startAt": 1623954600000,
+    "errors": null
+  }
+}
+```
+

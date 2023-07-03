@@ -1,0 +1,58 @@
+---
+titre: "NewRelic"
+metaTitle: "Intégration de NewRelic"
+metaDescription: "Comment intégrer NewRelic avec OpenReplay et voir les erreurs de backend avec les replays de session."
+---
+
+Comment intégrer NewRelic avec OpenReplay et voir les erreurs de backend avec les enregistrements de session.
+
+## 1. Créer une clé de requête
+
+1. Connectez-vous à votre compte [NewRelic](https://newrelic.com).
+2. Dans le coin supérieur gauche, sélectionnez le tableau de bord *INSIGHTS*.
+3. Dans le tableau de bord *INSIGHTS*, allez à "Gérer les données" puis sélectionnez *API Keys*.
+4. Cliquez sur le bouton *+* de *Query Keys*.
+
+![NewRelic API Keys](/static/newrelic-1.png#center)
+
+5. Dans les notes, mettez `openreplay`.
+6. Copiez l'`Account ID` et la `Key`.
+7. Cliquez sur *Enregistrez vos notes*.
+
+![NewRelic Query Key](/static/newrelic-2.png#center)
+
+## 2. Activer NewRelic dans OpenReplay
+
+Collez votre `Application ID` et votre `Key` dans le tableau de bord OpenReplay sous 'Préférences > Intégration'.
+
+![NewRelic Integration in OpenReplay](/static/newrelic-3.jpg#center)
+
+## 3. Propager openReplaySessionToken
+
+Pour lier un événement NewRelic à la session utilisateur enregistrée, un jeton unique doit être propagé depuis votre frontend vers votre backend à chaque requête que vous souhaitez suivre. Cela peut être fait en utilisant une en-tête HTTP personnalisée. Dans l'exemple ci-dessous, nous utilisons la fonction `fetch` pour envoyer cette en-tête.
+
+
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // or window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```
+
+
+Pour que OpenReplay associe une entrée de journal NewRelic à la session utilisateur enregistrée, un jeton unique doit être propagé en tant que `custom_parameter` à chaque erreur de backend que vous souhaitez suivre.
+
+Ci-dessous un exemple dans l'API Python de NewRelic.
+
+
+```python
+newrelic.agent.add_custom_parameter("openReplaySessionToken", OPENREPLAY_SESSION_TOKEN)
+```
+

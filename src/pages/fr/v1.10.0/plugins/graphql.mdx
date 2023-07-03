@@ -1,0 +1,123 @@
+---
+Titre: "GraphQL"
+MetaTitre: "GraphQL"
+MetaDescription: "Plugin GraphQL pour OpenReplay."
+---
+
+Importer Aside à partir de '~/components/Aside.astro'
+
+Ce plugin vous permet de capturer les demandes `GraphQL` et de les inspecter plus tard lors de la lecture des enregistrements de session. C'est très utile pour comprendre et résoudre les problèmes. Le plugin `GraphQL` est compatible avec les implémentations Apollo et Relay.
+
+<Aside type="tip">
+Nous avons également un tutoriel détaillé sur la façon d'utiliser le plugin GraphQL pour capturer et modifier les demandes, vous pouvez le consulter ici ( /tutorials/graphql).
+</Aside>
+
+## Installation
+
+
+```bash
+npm i @openreplay/tracker-graphql
+```
+
+
+## Utilisation
+
+L'appel de `plugin` renverra la fonction, qui reçoit quatre variables `operationKind`, `operationName`, `variables` et `result`. Il renvoie `result` sans modifications.
+
+### Si votre site Web est une application Web unique (SPA)
+
+
+```js
+import OpenReplay from '@openreplay/tracker';
+import trackerGraphQL from '@openreplay/tracker-graphql';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY,
+});
+
+export const recordGraphQL = tracker.use(trackerGraphQL());
+
+tracker.start();
+```
+
+
+### Si votre application Web est rendue côté serveur (SSR)
+
+Suivez l'exemple ci-dessous si votre application est SSR. Assurez-vous que `tracker.start()` est appelé une fois que l'application est lancée côté client (dans `useEffect` ou `componentDidMount`).
+
+
+```js
+// openreplay.js
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerGraphQL from '@openreplay/tracker-graphql/cjs';
+
+export const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+export const recordGraphQL = tracker.use(trackerGraphQL());
+
+// MyApp.js
+import { tracker } from './openreplay';
+
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, [])
+}
+//...
+```
+
+
+### Relay
+
+Pour [Relay](https://relay.dev/), vous devez placer manuellement l'appel `recordGraphQL` dans l'implémentation de `NetworkLayer`. Si vous avez une façon standard de l'implémenter avec `Network.create`, vous devez suivre l'exemple ci-dessous.
+
+
+```js
+import { Environment } from 'relay-runtime';
+import { recordGraphQL } from './openreplay'; // see above for recordGraphQL definition
+
+//...
+function fetchQuery(operation, variables, cacheConfig, uploadables) {
+  return fetch('ENDPOINT', {
+  //...
+  })
+    .then(response => response.json())
+    .then(result =>
+      recordGraphQL(operation.operationKind, operation.name, variables, result)
+    );
+}
+//...
+const network = Network.create(fetchQuery);
+```
+
+
+Voir [Relay Network Layer](https://relay.dev/docs/en/network-layer) pour plus de détails.
+
+### Apollo
+
+Pour [Apollo](https://www.apollographql.com/), vous devez créer un nouveau `ApolloLink` avec l'appel `recordGraphQL` et le mettre dans votre chaîne. Voici un exemple de la façon de le faire.
+
+
+```js
+import { ApolloLink } from '@apollo/client';
+import { recordGraphQL } from './openreplay'; // see above for recordGraphQL definition
+
+const trackerApolloLink = new ApolloLink((operation, forward) => {
+  return forward(operation).map(result) => {
+    const operationDefinition = operation.query.definitions[0];
+    return recordGraphQL(
+      operationDefinition.kind === 'OperationDefinition' ? operationDefinition.operation : 'unknown?',
+      operation.operationName,
+      operation.variables,
+      result
+    );
+  });
+});
+//...
+const link = ApolloLink.from([
+  trackerApolloLink,
+  //...
+]);
+```
+

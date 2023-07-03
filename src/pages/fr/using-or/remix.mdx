@@ -1,0 +1,197 @@
+---
+titre: "Utiliser OpenReplay avec Remix"
+metaTitle: "Utiliser le suiveur à l'intérieur d'un projet Remix"
+metaDescription: "Apprenez comment commencer à suivre vos utilisateurs sur votre projet Remix"
+---
+
+import GoDeeperFooter from '~/components/go-deeper-footer.astro'
+
+L'installation du suiveur OpenReplay dans un projet basé sur Remix est relativement simple.
+
+Avec votre projet Remix prêt, recherchez le fichier `root.jsx` dans le dossier `app` et incluez le code SSR fourni par OpenReplay lorsque vous avez créé le projet sur la plateforme.
+
+## Étape 1. Obtenir le code
+
+Vous pouvez certainement utiliser le code présenté par la plateforme, ce qui représenterait le minimum nécessaire pour commencer. Si vous le faites, assurez-vous de sélectionner l'option "Server-Side-Rendered (SSR)" comme indiqué ci-dessous.
+
+![snippet-code-screenshot.jpg](./images/snippet-code-screenshot.jpg)
+
+Mais pour cet exemple, nous allons créer un module d'exemple que nous enregistrerons sous le nom de `tracker.ts` dans le dossier `app`. Ce module exportera une fonction appelée `startTracker` qui instanciera le suiveur et le mettra en marche.
+
+
+```jsx
+import {v4 as uuidV4} from 'uuid'
+import Tracker from '@openreplay/tracker'
+
+function defaultGetUserId() {
+    return uuidV4() 
+}
+
+type TrackerConfig = {
+    projectKey: string,
+    userIdEnabled?: boolean,
+    getUserId?: () => string
+}
+
+export function startTracker(config: TrackerConfig) {
+    let tracker = null;
+    let userId = "";
+   
+    console.log("Starting tracker...")
+    console.log("Custom configuration received: ", config)
+        
+    const getUserId = (config?.userIdEnabled && config?.getUserId) ? config.getUserId : defaultGetUserId
+        
+    const trackerConfig: TrackerConfig = {
+        projectKey: config?.projectKey
+    }
+        
+    console.log("Tracker configuration")
+    console.log(trackerConfig)
+    tracker = new Tracker(trackerConfig);
+        
+    if(config?.userIdEnabled) {
+        userId = getUserId()
+        tracker.setUserID(userId)
+    }
+     
+    tracker.start();
+      
+    return {
+        tracker,
+        userId
+    }
+}
+```
+
+
+Si vous rencontrez des problèmes pour importer le module Tracker d'OpenReplay de cette façon, envisagez d'utiliser un import dynamique, comme ceci:
+
+
+```jsx
+import {v4 as uuidV4} from 'uuid'
+
+function defaultGetUserId() {
+    return uuidV4() 
+}
+
+type TrackerConfig = {
+    projectKey: string,
+    userIdEnabled?: boolean,
+    getUserId?: () => string
+}
+
+export function startTracker(config: TrackerConfig) {
+    let tracker = null;
+    let Tracker = null
+    let userId = "";
+    
+    (async () => {
+				//dynamic import 
+        Tracker  = (await import('@openreplay/tracker')).default 
+        console.log("Starting tracker...")
+        console.log("Custom configuration received: ", config)
+        
+        const getUserId = (config?.userIdEnabled && config?.getUserId) ? config.getUserId : defaultGetUserId
+        
+        const trackerConfig: TrackerConfig = {
+            projectKey: config?.projectKey
+        }
+        
+        console.log("Tracker configuration")
+        console.log(trackerConfig)
+        tracker = new Tracker(trackerConfig);
+        
+        if(config?.userIdEnabled) {
+            userId = getUserId()
+            tracker.setUserID(userId)
+        }
+        
+        
+        tracker.start();
+        
+    })()
+    
+    return {
+        tracker,
+        userId
+    }
+}
+```
+
+
+💡**Note pour les utilisateurs auto-hébergés:** si vous utilisez la version auto-hébergée d'OpenReplay, vous devrez également spécifier la propriété de configuration `ingestPoint`. Cette propriété spécifie le point d'ingestion des données du suiveur. Les utilisateurs du cloud n'ont pas besoin de cela, car par défaut le suiveur saura où se trouve le point d'extrémité SaaS, mais si vous l'hébergez vous-même, vous devrez le spécifier (ce devrait être quelque chose comme `https://openreplay.mydomain.com/ingest`)
+
+## Étape 2. Ajouter le code et le suiveur à votre projet
+
+Maintenant que c'est fait, vous devez installer le paquet de suiveur pour votre projet en utilisant:
+
+
+```markdown
+$ npm install @openreplay/tracker
+```
+
+
+Vous devrez également installer le [paquet uuid](https://www.npmjs.com/package/uuid) pour vous assurer que le code ci-dessus fonctionne tel quel.
+
+Une fois cela fait, nous sommes presque prêts à commencer le suivi, mais nous devons toujours configurer la **clé du projet** en tant que variable ENV et passer d'une manière ou d'une autre à l'objet `config` reçu dans la fonction `startTracker`.
+
+### Chargement des variables ENV dans Remix
+
+Les variables ENV sont accessibles dans le back-end, nous allons donc profiter de la fonction `loader` qui peut être utilisée pour charger des données externes, y compris les variables ENV.
+
+Et ensuite, nous utiliserons le hook `useLoaderData` pour que, après l'hydratation, notre composant ait accès aux données chargées.
+
+Dans notre fichier root.tsx (ou jsx si vous n'utilisez pas TypeScript), ajoutez cette fonction:
+
+
+```tsx
+type LoaderData = {
+  ENV: {
+    projectKey: string | undefined
+  }
+};
+
+export const loader: LoaderFunction = async ({ }) => {
+  return json<LoaderData>({
+    ENV: {
+      projectKey: process.env.OPENREPLAY_PROJECT_KEY
+    }
+  });
+};
+```
+
+
+Remarquez comment nous configurons notre clé de projet à l'intérieur de la variable ENV `OPENREPLAY_PROJECT_KEY`.
+
+En le retournant comme partie de l'exécution de la fonction `loader`, nous pouvons ensuite utiliser le hook `useLoaderData` à l'intérieur du composant principal, comme ceci:
+
+
+```tsx
+export default function App() {
+
+  let loaderData = useLoaderData()
+
+  useEffect(() => {
+    startTracker({
+      projectKey:  loaderData.ENV.projectKey
+    })
+  }, []) 
+
+  return (
+    <html lang="en">
+      <head>
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <Outlet />
+        <ScrollRestoration />
+        <Scripts />
+        <LiveReload />
+      </body>
+    </html>
+  );
+}
+```
+

@@ -1,0 +1,96 @@
+---
+titre: "Déployer sur Google Cloud"
+metaTitle: "Déployer sur Google Cloud"
+metaDescription: "Guide étape par étape pour déployer OpenReplay sur Google Cloud."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+import YoutubeVideo from '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="Regardez comment déployer OpenReplay dans votre infrastructure GCP"
+  description="Si vous n'aimez pas lire, vous pouvez suivre ce tutoriel vidéo vous montrant comment déployer OpenReplay dans GCP"
+  videoURL="https://youtu.be/t31fj-0t3Dw"
+  />
+
+La pile OpenReplay peut être installée sur une seule machine et Google Cloud est un candidat idéal.
+
+## Lancez une VM
+
+1. Allez dans le tableau de bord Compute Engine et sélectionnez «Instances VM» dans la barre de menu latérale
+2. Cliquez sur «Créer une instance»
+3. Sélectionnez votre région et votre zone préférées
+4. Choisissez votre type de machine. Les spécifications minimales sont `2 vCPUs, 8 Go de RAM, 50 Go de stockage`, sinon les services de backend OpenReplay ne démarreront tout simplement pas. Nous vous recommandons donc **au moins** le `n2-standard-2` (ou un équivalent - notez que le `e2-standard-2` a été connu pour donner des problèmes lors du déploiement) qui est suffisant pour un volume faible / modéré. Si vous attendez un trafic élevé, vous devez le mettre à l'échelle à partir d'ici.
+5. Changez votre disque de démarrage en *Ubuntu 20.04 LTS* ou plus, puis choisissez *SSD persistent disk* pour le type de disque de démarrage et définissez la taille à 50 Go.
+6. Cochez à la fois «Autoriser le trafic HTTP» et «Autoriser le trafic HTTPS» dans le pare-feu
+7. Cliquez sur «Créer»
+
+## Déployez OpenReplay
+
+Une fois que votre instance est `En cours d'exécution`, connectez-vous à celle-ci en appuyant sur le bouton `SSH` puis installez OpenReplay en fournissant le domaine sur lequel il sera exécuté (par exemple DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+## Configurer TLS / SSL
+
+OpenReplay traite des données d'utilisateur sensibles et nécessite donc HTTPS pour fonctionner. Cela est obligatoire, sinon le suivi ne commencerait tout simplement pas à enregistrer. La même chose s'applique au tableau de bord, sans HTTPS vous ne pourrez pas rejouer les sessions d'utilisateur.
+
+La manière la plus simple de gérer SSL dans Google Cloud est de configurer un équilibreur de charge (Google Load Balancing) et d'exécuter OpenReplay derrière celui-ci. Une autre option consiste à générer ou à utiliser votre propre certificat SSL et à pointer votre sous-domaine (c'est-à-dire openreplay.mycompany.com) vers l'instance OpenReplay. Plus d'informations sur les deux options ci-dessous.
+
+### Configurer l'équilibreur de charge Google (option 1)
+
+Première étape: ajouter un groupe d'instances qui sera nécessaire plus tard pour l'équilibreur de charge:
+
+1. Allez dans 'Compute Engine' > 'Groupes d'instances'
+2. 'Créer un groupe d'instances' et sélectionnez *Nouveau groupe d'instances non géré*
+3. Choisissez votre emplacement préféré, puis sélectionnez le réseau et choisissez l'instance OpenReplay VM
+4. Cliquez sur 'Créer'
+
+Il est maintenant temps de créer l'équilibreur de charge:
+
+1. Allez dans 'Services réseau' > 'Équilibrage de charge'
+2. 'Créer un équilibreur de charge' et choisissez *Équilibrage de charge HTTP (S) *
+3. Choisissez 'De l'Internet vers mes VMs' puis cliquez sur 'Continuer'
+4. Commencez par 'Configuration backend' et cliquez sur 'Services backend' > 'Créer un service backend'
+5. Sélectionnez *Groupe d'instances* pour 'Type de backend'. Dans 'Backends' > 'Nouveau backend', choisissez le groupe d'instances que vous avez précédemment créé, définissez le port sur `80` puis appuyez sur 'Terminé'.
+6. Faites défiler jusqu'à 'Vérification de la santé' et 'Créer une vérification de la santé'. Choisissez HTTP pour le 'Protocole', définissez le 'Port' sur `80` puis modifiez le 'Chemin de la demande' en `/healthz`. Gardez les autres valeurs par défaut, puis appuyez sur 'Enregistrer'.
+7. Cliquez sur 'Créer'
+8. Dans 'Configuration frontend', choisissez HTTPS pour 'Protocole' puis dans 'Certificat' créez un nouveau certificat (géré par Google) ou apportez le vôtre. Appuyez sur 'Terminé'.
+9. Aperçu puis cliquez sur 'Créer'
+
+Une fois créé, allez dans Cloud DNS (ou votre fournisseur de service DNS) et créez un `A Record` qui pointe vers l'équilibreur de charge en utilisant son IP (peut être trouvé dans le tableau de bord de l'équilibrage de charge).
+
+Enfin, activez le `use-forwarded-headers`, en décommentant la ligne ci-dessous dans la section `ingress-nginx`, dans `/var/lib/openreplay/vars.yaml`:
+  
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      use-forwarded-headers: true
+```
+
+
+Vous êtes maintenant prêt, OpenReplay devrait être accessible de manière sécurisée sur le sous-domaine que vous venez de configurer. Vous pouvez créer un compte en visitant la page `/signup` (c'est-à-dire openreplay.mycompany.com/signup).
+
+### Apportez / générez votre certificat SSL (option 2)
+
+En alternative à la création d'un équilibreur de charge, vous pouvez apporter (ou générer) votre propre certificat SSL.
+
+1. Tout d'abord, allez dans Cloud DNS (ou votre autre fournisseur de service DNS) et créez un `A Record`. Utilisez le domaine que vous avez fourni précédemment lors de l'étape d'installation et pointez-le vers la VM en utilisant son adresse IP publique (peut être trouvé dans le tableau de bord Compute Engine).
+
+2. Si vous apportez votre propre certificat, créez un secret SSL en utilisant la commande suivante: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **Note:** Si vous n'avez pas de certificat, générez-en un, qui se renouvelle automatiquement, pour votre sous
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```

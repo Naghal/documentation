@@ -1,0 +1,40 @@
+---
+titre: "Datadog"
+metaTitle: "Intégration de Datadog"
+metaDescription: "Comment intégrer Datadog avec OpenReplay et voir les erreurs de backend avec les relectures de session."
+---
+
+Comment intégrer Datadog avec OpenReplay et voir les erreurs de backend avec les enregistrements de session.
+
+## 1. Générer la clé API et la clé d'application Datadog
+
+Accédez à [Datadog > Intégrations > APIs] (https://app.datadoghq.com/account/settings#api) et générez la clé API ou utilisez celle existante.
+
+![Clé API Datadog] (/static/datadog-1.png#center)
+
+Sur la même page, cliquez sur les clés d'application et générez une nouvelle clé d'application.
+
+![Clé d'application Datadog] (/static/datadog-2.png#center)
+
+## 2. Activer l'intégration dans OpenReplay
+
+Collez votre clé `API` et votre clé `Application` dans Datadog dans le tableau de bord OpenReplay sous "Préférences > Intégration".
+
+![Intégration Datadog dans OpenReplay] (/static/datadog-3.png#center)
+
+## 3. Propager openReplaySessionToken
+
+Pour lier un événement Datadog à la session d'utilisateur enregistrée, un jeton unique doit être propagé de votre frontend à votre backend à chaque requête que vous souhaitez suivre. Cela peut être fait en utilisant un en-tête HTTP personnalisé. Dans l'exemple ci-dessous, nous utilisons la fonction `fetch` pour envoyer cet en-tête.
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // or window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```

@@ -1,0 +1,186 @@
+---
+titre: "Déployer à partir de la source"
+metaTitle: "Déployer à partir de la source"
+metaDescription: "Guide étape par étape pour déployer OpenReplay à partir du code source."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+OpenReplay peut être déployé à partir de la source. Ses principaux composants (Backend, API et Frontend) doivent être construits et poussés vers votre propre registre de conteneurs avant de procéder à l'installation.
+
+Les spécifications minimales pour la machine exécutant OpenReplay sont `2 vCPUs, 8 Go de RAM, 50 Go de stockage`, sinon les services Backend d'OpenReplay ne démarreront tout simplement pas. Cela devrait suffire pour un volume faible / modéré. Si vous vous attendez à un trafic élevé, vous devriez le mettre à l'échelle à partir d'ici.
+
+## 1. Prérequis
+
+1. Installez docker:
+
+
+```bash
+sudo apt update
+sudo apt install docker.io -y
+user=`whoami`
+sudo chown $user /var/run/docker.sock
+```
+
+
+2. Clonez le référentiel OpenReplay:
+
+
+```bash
+git clone https://github.com/openreplay/openreplay
+```
+
+
+## 2. Construire les services Backend
+
+1. Connectez-vous à votre registre de conteneurs en utilisant `docker login <registry_url>`. Si vous avez un compte Docker Hub, exécutez simplement `docker login`.
+
+2. Construisez les composants backend puis poussez-les vers votre registre de conteneurs:
+
+
+```bash
+cd openreplay/backend
+sudo IMAGE_TAG=<my_tag_number> PUSH_IMAGE=1 DOCKER_REPO=index.docker.io/<username> bash build.sh 
+```
+
+
+*Notez* que le nom de l'étiquette peut être n'importe quelle chaîne que vous souhaitez, elle sera créée sur votre registre Docker et elle sera utilisée pour identifier cette version particulière du code (utile si vous modifiez également le code).
+
+Si tout se passe bien, vous devriez avoir, dans votre registre Docker, une liste d'images construites à partir du code source que vous aviez, prêtes à être installées.
+La liste des images est:
+
+- Stockage
+- Évier
+- Intégrations
+- HTTP
+- Heuristiques
+- Ender
+- DB
+- Actifs
+- Alertes
+- Chalice
+
+## 3. Mettre à jour les images
+
+1. Créez votre secret de registre de conteneurs:
+
+
+```bash
+kubectl create secret -n app docker-registry my-registry-secret \
+        --docker-server=MY_CONTAINER_REGISTRY_URL \ # not required if docker hub
+        --docker-username=MY_CONTAINER_REGISTRY_USERNAME \
+        --docker-password=MY_CONTAINER_REGISTRY_PASSWORD \
+        --docker-email=no@email.local 
+```
+
+
+2. Pour utiliser les composants que vous venez de construire et de pousser vers votre registre de conteneurs, mettez à jour le fichier `vars.yaml`, situé dans le dossier `openreplay/scripts/helmcharts`.
+Ajoutez simplement une section pour chaque image que vous avez sur votre registre Docker avec les informations suivantes:
+
+- `repository`: doit pointer vers MY_CONTAINER_REGISTRY_URL/COMPONENT_NAME (si vous utilisez Docker Hub, utilisez le format `<username>/<component name>` à la place)
+- `pullPolicy`: défini sur "Toujours"
+- `tag`: la valeur de IMAGE_TAG utilisée lors de la construction de Backend et API
+- `imagePullSecrets`: le secret du registre de conteneurs
+
+Notez que toute image que vous ne référencez pas dans le fichier `vars.yaml` sera déployée et installée à partir du **référentiel officiel** d'OpenReplay, ce qui signifie que vous n'aurez pas la version construite à partir de votre code source.
+
+Ci-dessous un exemple pour le service `alertes`:
+
+
+```yaml
+alerts:
+  image:
+    repository: rg.fr-par.scw.cloud/foss/alerts
+    pullPolicy: Always
+    tag: "v1.4.2"
+  imagePullSecrets: 
+    - name: my-registry-secret
+```
+
+
+### Installer OpenReplay
+
+1. Ouvrez `vars.yaml` puis modifiez:
+- `domainName`: c'est là où OpenReplay sera accessible (c'est-à-dire openreplay.mycompany.com)
+
+2. Installez OpenReplay:
+
+
+```bash
+cd openreplay/scripts/helmcharts
+helm upgrade --install databases ./databases -n db --create-namespace --wait -f ./vars.yaml --atomic
+helm upgrade --install openreplay ./openreplay -n app --create-namespace --wait -f ./vars.yaml --atomic
+```
+
+
+Si vous modifiez jamais le code source des services back-end ou du service DB, vous devrez revenir à l'étape 3 et exécuter à nouveau les commandes ci-dessus.
+
+### Configurer TLS / SSL
+
+OpenReplay traite des données d'utilisateur sensibles et nécessite donc HTTPS pour fonctionner. C'est obligatoire, sinon le tracker ne commencerait tout simplement pas à enregistrer. Même chose pour le tableau de bord, sans HTTPS vous ne pourrez pas rejouer les sessions utilisateur.
+
+Vous devez donc apporter (ou générer) votre propre certificat SSL.
+
+1. Tout d'abord, allez chez le fournisseur de service DNS et créez un `A Record`. Utilisez le domaine que vous avez fourni précédemment lors de l'installation et pointez-le vers votre machine à l'aide de son adresse IP publique.
+
+2. Si vous apportez votre propre certificat, créez un secret SSL Kubernetes à l'aide de la commande suivante: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **Note:** Si vous n'avez pas de certificat, générez-en un, qui se renouvelle automatiquement, pour votre sous-domaine (celui fourni lors de l'installation) à l'aide de Let's Encrypt. Exécutez `cd openreplay/scripts/helmcharts && bash certmanager.sh` et suivez les étapes.
+
+3. Si vous souhaitez activer la redirection http vers https (recommandé), décommentez alors le bloc ci-dessous, dans la section `ingress-nginx`, dans `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+Il est à noter que notre `ingress-nginx` fonctionne par défaut sur les ports `80|443`, mais cela peut être facilement modifié, si nécessaire, dans `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+
+
+4. Enfin, réinstallez OpenReplay NGINX:
+
+
+```bash
+ openreplay -R
+```
+
+
+## 4. Construire et déployer le Frontend
+
+Enfin, si vous souhaitez également construire le front-end, vous devrez construire l'image avec la ligne suivante:
+
+
+```bash
+cd openreplay/frontend
+IMAGE_TAG=<your tag> PUSH_IMAGE=1 DOCKER_REPO=myDockerHubID bash build.sh
+```
+
+
+Une fois ceci fait, revenez au fichier `vars.yaml` et ajoutez une section spécifique pour le front-end, elle devrait ressembler aux autres que vous avez ajoutées avant pour `alertes` et `chalice`:
+
+
+```yaml
+frontend:
+  image:
+    repository: <YOUR DOCKER REGISTRY>/frontend
+    pullPolicy: Always
+    tag: <YOUR TAG>
+  imagePullSecrets: 
+    - name: <YOUR SECRET>
+```
+

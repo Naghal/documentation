@@ -1,0 +1,32 @@
+---
+titre: "FAQ sur l'infrastructure"
+metaTitle: "FAQ sur l'infrastructure"
+metaDescription: "Questions fréquemment posées sur l'infrastructure"
+---
+
+1. Mon installation ne fonctionne plus soudainement.
+  
+   Il peut y avoir plusieurs raisons à cela. Par exemple, le disque est plein ou un problème de réseau. Les étapes suivantes peuvent aider à déboguer.
+
+   - Vérifiez l'utilisation du disque dans la machine. Si l'utilisation du disque est supérieure à 80%, l'application ne fonctionnera pas.
+    
+     `df -h`
+
+2. L'installation / la mise à niveau a échoué sans aucune erreur particulière.
+  
+   1. helm une autre opération (installation / mise à niveau / retour en arrière) est en cours:
+      Cela signifie que vous avez réessayé l'installation / la mise à niveau échouée plusieurs fois. Pour résoudre ce problème
+
+      `helm rollback -n app openreplay`
+   2. Pas de journal d'erreur, juste l'installation a échoué.
+      
+```bash
+      # check for failed pods
+      kubectl get pods -n app \
+        --field-selector="status.phase!=Succeeded,status.phase!=Running" \
+        -o custom-columns="POD:metadata.name"
+        
+      # Check for the err logs
+      stern -n app `pod name from above`
+      ```
+

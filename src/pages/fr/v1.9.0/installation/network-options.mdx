@@ -1,0 +1,24 @@
+---
+titre: "Options de réseau"
+metaTitle: "Options de réseau"
+metaDescription: "Plugin d'options de réseau pour OpenReplay."
+---
+
+Cette page décrit en détail le namespace `network` de l'option [SDK javascript OpenRplay](/installation/javascript-sdk/#options). Il concerne la capture des demandes réseau telles que `fetch` et `XHR`, y compris les charges utiles si nécessaire, et les inspecter plus tard lors de la lecture des enregistrements de session. Cela est très utile pour comprendre et résoudre les problèmes.
+
+## Options de réseau
+
+- `failuresOnly`: Capture les demandes ayant un code de statut HTTP 4xx-5xx. Par défaut: `false`.
+- `sessionTokenHeader`: Si vous avez activé l'une de nos [intégrations](/integrations) (c'est-à-dire Sentry), vous pouvez utiliser cette option pour spécifier le nom de l'en-tête (ou activer le défaut 'X-OpenReplay-SessionToken' en mettant l'option à `true`). Ce dernier est automatiquement ajouté à chaque demande fetch/XHR pour contenir la valeur du jeton de session OpenReplay. Par défaut: `false`.
+- `ignoreHeaders`: Aide à définir une liste d'en-têtes que vous ne souhaitez pas capturer. Définissez sa valeur sur `false` pour capturer tous (`true` si aucun). Par défaut: `['Cookie', 'Set-Cookie', 'Authorization']` afin que les en-têtes sensibles ne soient pas capturés.
+- `capturePayload`: stocke les corps de demande/réponse. Cela peut être très utile pour l'analyse de session, mais peut devenir lourd sur l'utilisation du réseau si votre application utilise extensivement des demandes fetch/XHR. Par défaut: `false`.
+- `sanitizer`: Masque les données sensibles des demandes/réponses fetch/XHR ou ignore complètement la demande. Vous pouvez masquer des champs sur l'objet de demande en le modifiant puis en le renvoyant à partir de la fonction (voir les exemples ci-dessous). La sanitisation est appliquée **après** tous les filtrages et modifications induits par les autres options (c'est-à-dire que l'argument ne contiendra pas de charge utile `body` si `capturePayload` n'a pas été explicitement défini sur `true`).
+```js
+network?: {
+  failuresOnly: boolean;
+  sessionTokenHeader: string | boolean;
+  ignoreHeaders: Array<string> | boolean;
+  capturePayload: boolean;
+  sanitizer: (RequestResponseData) => RequestResponseData | null;
+}
+```

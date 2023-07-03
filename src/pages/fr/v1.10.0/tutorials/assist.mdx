@@ -1,0 +1,127 @@
+---
+titre: "Activer l'assistance"
+metaTitle: "Comment aider vos utilisateurs avec la relecture de session en direct"
+metaDescription: "Comment configurer OpenReplay Assist et prendre en charge vos utilisateurs finaux via l'écran en direct et WebRTC."
+---
+import YoutubeVideo from '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="Regardez comment utiliser Assist avec Next.js"
+  description="Si vous n'aimez pas lire, vous pouvez suivre ce tutoriel vidéo vous montrant comment utiliser le plugin Assist dans votre application"
+  videoURL="https://www.youtube.com/watch?v=8hpolw2_mMs"
+  />
+
+La relecture de session est un outil dont chaque produit et équipe de développement a besoin une fois que leur application est en production.
+Ces outils leur permettent de comprendre comment leurs utilisateurs finaux interagissent avec le produit sans le biais potentiel d'un groupe de test d'utilisateurs contrôlé. Avec ces informations, ils peuvent comprendre des choses comme les lacunes en matière d'expérience utilisateur, les problèmes dans la logique commerciale dus à des interactions incorrectes de l'utilisateur, les cas limites qui nécessitent des séquences complexes d'actions pour être déclenchés et bien d'autres options.
+
+Cependant, il existe un cas d'utilisation que les outils de relecture de session traditionnels ne peuvent vraiment pas gérer: le support de session en direct.
+
+Avoir la possibilité de voir _en direct_ ce que vos utilisateurs font et y répondre directement, même en prenant le contrôle de leur souris ou en sautant sur un appel rapide pour _leur montrer_ le problème, est inestimable. Et c'est pourquoi OpenReplay a mis en œuvre la fonctionnalité [Assist](https://openreplay.com/feature-assist.html).
+
+## Que peut faire OpenReplay Assist pour vous?
+
+Dans un scénario normal où vous configurez votre application pour enregistrer une session utilisateur, vous obtiendrez les événements, erreurs et problèmes habituels livrés à votre instance de OpenReplay (ou à la version SaaS) après quelques minutes de fermeture de l'onglet (l'application doit s'assurer que vous ne l'avez pas fermé par accident après tout). Vous pourrez analyser pas à pas ce que l'utilisateur a fait, mais si vous trouvez un problème, vous ne pourrez pas le revoir directement avec cet utilisateur.
+
+Cependant, grâce à Assist, vous pourrez maintenant:
+
++ Inspecter directement ce que l'utilisateur fait, en direct, **dès l'ouverture de la page**.
++ Grâce à l'utilisation de WebRTC, un canal 1 à 1 est créé entre le client et l'opérateur. Cela vous permet d'**ouvrir un appel directement depuis l'application**, sans avoir besoin d'avoir un logiciel de communication tiers installé sur l'un ou l'autre des ordinateurs impliqués.
++ **Prendre le contrôle de la souris de l'utilisateur** (avec leur permission bien sûr) et leur montrer exactement où cliquer.
+
+Jetez un coup d'œil à l'interface utilisateur de la fonction d'assistance telle qu'elle est vue par l'opérateur regardant ce que l'utilisateur fait à un moment donné:
+
+![](https://i.imgur.com/4vxXpHn.png)
+
+Étant donné que c'est une fonction affichant des mises à jour en direct, les points forts seraient les champs "email" et "numéro de téléphone". Le premier est masqué pour maintenir la confidentialité de l'utilisateur, et le second est littéralement ignoré par le traceur pour éviter la collecte de données personnelles.
+Et étant donné que la transformation des données est effectuée côté client, il n'y a aucun moyen pour vous, en tant qu'opérateur, de voir ces valeurs.
+
+Ceci à son tour, vous permet de fournir parfaitement un support pour n'importe quel type de système avec la garantie à vos utilisateurs qu'il n'y aura aucun traitement de leurs données personnelles.
+
+## Ajouter le plugin Assist à votre configuration
+
+Cette fonctionnalité est déjà disponible sur toutes les dernières versions de OpenReplay, alors tout ce que nous avons à faire, c'est de l'activer.
+Si vous travaillez avec la version package de OpenReplay, tout ce que vous avez à faire, c'est d'installer le plugin suivant directement à partir de votre ligne de commande:
+
+
+```bash 
+npm install @openreplay/tracker-assist
+```
+
+
+Et ensuite, utilisez le code suivant pour l'activer:
+
+
+```javascript 
+//...
+import OpenReplay from '@openreplay/tracker';
+import trackerAssist from '@openreplay/tracker-assist';
+//...
+const tracker = new OpenReplay({
+  projectKey: "your project key"
+});
+tracker.use(trackerAssist({})); //add this line
+tracker.start();
+```
+
+
+Si, par contre, vous utilisez le snippet JS que vous avez obtenu à partir de la plate-forme lors de la première configuration, tout ce que vous avez à faire, c'est de mettre à jour un chemin.
+Votre snippet original aurait dû ressembler à ceci:
+
+
+```javascript 
+<!-- OpenReplay Tracking Code for HOST -->
+<script>
+  var initOpts = {
+    projectKey: "your project key",
+    defaultInputMode: 0,
+    obscureTextNumbers: false,
+    obscureTextEmails: true,
+  };
+  var startOpts = { userID: "" };
+  (function(A,s,a,y,e,r){
+    r=window.OpenReplay=[e,r,y,[s-1, e]];
+    s=document.createElement('script');s.src=A;s.async=!a;
+    document.getElementsByTagName('head')[0].appendChild(s);
+    r.start=function(v){r.push([0])};
+    r.stop=function(v){r.push([1])};
+    r.setUserID=function(id){r.push([2,id])};
+    r.setUserAnonymousID=function(id){r.push([3,id])};
+    r.setMetadata=function(k,v){r.push([4,k,v])};
+    r.event=function(k,p,i){r.push([5,k,p,i])};
+    r.issue=function(k,p){r.push([6,k,p])};
+    r.isActive=function(){return false};
+    r.getSessionToken=function(){};
+  })("//static.openreplay.com/latest/openreplay.js",1,0,initOpts,startOpts);
+</script>
+```
+
+
+Remarquez le chemin vers le fichier `openreplay.js` en bas. Nous devons le modifier et mettre à la place `openreplay-assist.js`, de sorte qu'il ressemble à ceci:
+
+
+```javascript 
+<!-- OpenReplay Tracking Code for HOST -->
+<script>
+  var initOpts = {
+    projectKey: "your project key",
+    defaultInputMode: 0,
+    obscureTextNumbers: false,
+    obscureTextEmails: true,
+  };
+  var startOpts = { userID: "" };
+  (function(A,s,a,y,e,r){
+    r=window.OpenReplay=[e,r,y,[s-1, e]];
+    s=document.createElement('script');s.src=A;s.async=!a;
+    document.getElementsByTagName('head')[0].appendChild(s);
+    r.start=function(v){r.push([0])};
+    r.stop=function(v){r.push([1])};
+    r.setUserID=function(id){r.push([2,id])};
+    r.setUserAnonymousID=function(id){r.push([3,id])};
+    r.setMetadata=function(k,v){r.push([4,k,v])};
+    r.event=function(k,p,i){r.push([5,k,p,i])};
+    r.issue=function(k,p){r.push([6,k,p])};
+    r.isActive=function(){return false};
+    r.getSessionToken=function(){};
+  })("//static.openreplay.com/latest/openreplay-assist.js",1,0,initOpts,startOpts);
+</script>
+```
+

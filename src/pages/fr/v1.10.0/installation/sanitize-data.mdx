@@ -1,0 +1,113 @@
+---
+titre: "Nettoyer les données"
+metaTitle: "Nettoyer les données"
+metaDescription: "Comment nettoyer les données et garantir la confidentialité de vos utilisateurs."
+---
+import Aside from '~/components/Aside.astro'
+
+## Nettoyer les données de la répétition
+
+Vous pouvez nettoyer ce que OpenReplay capture à la fois à un niveau global et/ou granulaire. Toutes les données masquées ou ignorées ne seront pas capturées à la source. En d'autres termes, ces données ne quitteront jamais le navigateur de l'utilisateur.
+
+<Aside type="tip">
+Si vous souhaitez regarder une courte vidéo sur la façon de nettoyer les données dans vos répétitions, utilisez [cette vidéo YouTube](https://youtu.be/22-UCoocy6s), sinon continuez à lire pour plus de détails.
+</Aside>
+
+### Niveau global
+
+Les données peuvent être nettoyées au niveau du suivi, lors de la configuration d'OpenReplay.
+
+#### J'utilise le script OpenReplay
+
+![Configuration du projet dans OpenReplay](/static/gdpr-1.png#center)
+
+1) Cliquez sur le *Code de suivi* de votre projet sous 'Préférences > Projets'.
+2) Les options d'enregistrement des données devraient apparaître juste avant le code extrait :
+- **Entrées** : Pour ignorer, masquer ou enregistrer toutes les valeurs d'entrée de vos utilisateurs.
+- **Ne pas enregistrer de texte numérique** : Pour ignorer les valeurs numériques contenues dans les éléments de texte.
+- **Ne pas enregistrer les adresses e-mail** : Par défaut, tous les e-mails contenus dans les éléments de texte sont masqués et n'apparaîtront pas dans les répétitions. Vous pouvez désactiver cette option en décochant la case.
+3) Les modifications des options d'enregistrement des données ont un impact sur le code extrait. Assurez-vous de copier/coller le script mis à jour dans votre application web.
+
+#### J'utilise OpenReplay NPM
+
+Il existe un ensemble d'options liées à la confidentialité que vous pouvez passer au constructeur :
+- `obscureTextEmails?: boolean` Masquer les e-mails dans les éléments de texte. Les e-mails seront converties en une chaîne aléatoire d'astérisques. Par défaut : true.
+- `obscureTextNumbers?: boolean` Masquer les nombres dans les éléments de texte. Les nombres seront convertis en une chaîne aléatoire d'astérisques. Par défaut : false.
+- `obscureInputEmails?: boolean` Masquer les e-mails dans les champs de saisie. Les valeurs e-mail seront converties en une chaîne aléatoire d'astérisques. Par défaut : true.
+- `obscureInputDates?: boolean` Masquer les dates dans les champs de saisie. Les valeurs de date seront converties en une chaîne aléatoire d'astérisques. Par défaut : false.
+- `defaultInputMode?: 0 | 1 | 2` Mode de capture par défaut pour les valeurs d'entrée. Respectivement : en clair, masqué ou ignoré. Par défaut : 0 (en clair).
+
+Les textes, e-mails et nombres nettoyés sont masqués ou supprimés avant d'envoyer les données aux serveurs OpenReplay. Par conséquent, les modifications apportées aux options ci-dessus ne sont pas rétroactives et ne s'appliqueront qu'aux données collectées récemment.
+
+### Niveau granulaire
+
+Vous pouvez également nettoyer vos données au niveau du code pour une meilleure granularité. Cela est utile pour masquer ou ignorer les éléments DOM et les champs de saisie.
+
+#### Utilisation des attributs HTML
+
+- `data-openreplay-obscured` pour masquer le contenu texte des balises `<input>`, `<img>` et autres éléments HTML (c'est-à-dire `<div>`) à l'exception de `<svg>` et `<canvas>`.
+
+
+```HTML
+<!--Obscuring input fields-->
+<form action="/action_page.php">
+  Name: <input type="text" name="fname" data-openreplay-obscured><br>
+  <input type="submit" value="Submit">
+</form>
+<!--Obscuring a div element-->
+<div style="background-color:lightblue" data-openreplay-obscured>
+  <h3>This is a sensitive information</h3>
+  <p>This is an important paragraph</p>
+  <img src="important_image.jpg">
+</div>
+```
+
+
+- `data-openreplay-hidden` pour masquer le contenu des balises `<input>`, `<img>`, `<svg>` et autres éléments HTML (c'est-à-dire `<div>`) à l'exception de `<canvas>`. Le contenu de l'élément (y compris ses composants enfants) est supprimé, mais ses propriétés et arguments sont conservés, comme dans cet exemple :
+
+
+```HTML
+<div style="background-color:lightblue" data-openreplay-hidden>
+  <div>This is a sensitive information</div>
+  <svg>An important chart</svg>
+</div>
+```
+
+
+Cela entraînera le DOM suivant enregistré par le suivi :
+
+
+```HTML
+<div style="background-color:lightblue" data-openreplay-hidden>
+</div>
+```
+
+
+#### Utilisation de la fonction domSanitizer
+
+- `domSanitizer: (node: Element) => SanitizeLevel` fonction pour éviter d'instrumenter chaque composant HTML qui doit être nettoyé. `SanitizeLevel` peut être `Plain` (0), `Obscured` (1) ou `Hidden` (2). Cette fonction est passée au constructeur du suivi. Ci-dessous un exemple de masquage de tous les éléments HTML ayant un nom de classe CSS spécifique :
+
+
+```js
+// Import SanitizeLevel enum
+import Tracker, { SanitizeLevel } from "@openreplay/tracker";
+
+const tracker = new Tracker({
+  projectKey: PROJECT_KEY,
+  domSanitizer: (node: Element) => {
+    const elementClassNames = node.classList
+
+    if (elementClassNames.contains('to_be_redacted_class')) {
+      return SanitizeLevel.Hidden
+    }
+
+    if (node.id === 'sensitiveData') {
+      return SanitizeLevel.Obscured
+    }
+
+    return SanitizeLevel.Plain
+  }
+})
+tracker.start()
+```
+

@@ -1,0 +1,69 @@
+---
+titre: "Déploiement de mise à niveau"
+metaTitle: "Déploiement de mise à niveau"
+metaDescription: "Comment mettre à niveau votre instance vers la dernière version d'OpenReplay."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+Mettre à niveau votre déploiement OpenReplay vers la dernière version nécessite la mise à jour à la fois de votre arrière-plan (instance) et du suivi.
+
+## Mise à niveau de l'arrière-plan (à partir de v1.4.0 ou supérieur)
+
+>**Note:** Si votre version OpenReplay est antérieure à `v1.4.0`, [lisez ceci d'abord](/deployment/deprecated-versions) avant de continuer avec les instructions ci-dessous.
+
+1. Copiez / sauvegardez le dossier openreplay actuel vers `_version-number` comme ci-dessous:
+  
+  
+```bash 
+  mv openreplay openreplay_v1.4.0
+  ```
+
+
+2. Clonez la nouvelle version d'OpenReplay. Dans cet exemple, nous mettons à niveau vers la dernière version disponible:
+  
+  
+```bash 
+  git clone https://github.com/openreplay/openreplay
+  ```
+
+
+3. Mettez à niveau OpenReplay:
+
+  
+```bash
+  cd openreplay/scripts/helmcharts
+
+  # Merge previous vars.yaml with current var.yaml (using yq for yaml parsing)
+  cp ~/openreplay_v1.4.0/scripts/helmcharts/vars.yaml old_vars.yaml
+  wget https://github.com/mikefarah/yq/releases/download/v4.24.4/yq_linux_amd64 -O yq
+  chmod +x ./yq
+  ./yq '. *= load("old_vars.yaml")' vars.yaml > new_vars.yaml
+  mv new_vars.yaml vars.yaml
+  
+  # Cleanup depricated resource
+  kubectl delete ing -n db minio-frontend
+  
+  # Setting proper permisson
+  /bin/bash -c '[[ -d /openreplay ]] && sudo chown -R 1001:1001 /openreplay'
+  
+  # Upgrade openreplay
+  helm upgrade --install openreplay ./openreplay -n app --wait -f ./vars.yaml --atomic
+  ```
+
+  
+4. Si vous n'utilisez pas de chargeur de balance et avez généré votre certificat SSL via le script `certmanager.sh`:
+
+  
+```
+  cd openreplay/scripts/helmcharts && bash certmanager.sh
+  ```
+
+
+5. Mettez à jour la variable `fromVersion` dans `/openreplay/scripts/helmcharts/vars.yaml` pour refléter la nouvelle version. Par exemple, si vous passez de `v1.4.0` à `v1.8.0`, mettez à jour la `fromVersion` comme ci-dessous:
+ 
+  
+```yaml
+  fromVersion: "v1.8.0"
+  ```
+

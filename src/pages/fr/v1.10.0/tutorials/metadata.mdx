@@ -1,0 +1,91 @@
+---
+titre: "Enrichir vos enregistrements de session avec des métadonnées"
+metaTitle: "Ajouter des métadonnées à vos reprises de session pour améliorer vos informations"
+metaDescription: "Apprenez à ajouter des métadonnées à vos reprises de session et à les utiliser pour améliorer les informations que vous obtenez de la plateforme"
+---
+import YoutubeVideo from '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="Regardez comment utiliser des métadonnées envoyées depuis votre application Next.js"
+  description="Si vous n'aimez pas lire, vous pouvez suivre ce tutoriel vidéo qui vous montre comment envoyer des métadonnées depuis votre application vers la plateforme OpenReplay"
+  videoURL="https://www.youtube.com/watch?v=ITcJCeKWQGU"
+  />
+
+Par défaut, notre traceur enverra beaucoup d'informations utiles à notre plateforme, mais toutes ces informations sont standardes. Tant qu'un point de données fait partie de l'API Web, il y a de fortes chances que nous le suivions.
+
+Mais que se passe-t-il si vous souhaitez également améliorer vos enregistrements de session avec des données spécifiques à votre application?
+
+Comme comprendre quel plan payant est sous lequel votre utilisateur est lorsque vous examinez sa reprise? Cette information peut fournir un contexte supplémentaire à vos développeurs, alors même si ce n'est pas standard, cela ne signifie pas que nous devrions l'ignorer, n'est-ce pas?
+
+C'est là que les métadonnées entrent en jeu.
+
+**Notez** qu'il existe une [version vidéo de ce tutoriel] (https://www.youtube.com/watch?v=ITcJCeKWQGU) sur notre chaîne YouTube. Alors n'hésitez pas à le consulter si vous êtes plus un apprenant visuel.
+
+## Qu'est-ce que les métadonnées?
+
+Dans le contexte d'une reprise de session, les métadonnées sont toutes les informations que votre utilisateur ne génère pas, mais qui sont liées à cet utilisateur.
+
+En d'autres termes, si l'utilisateur clique sur un lien spécifique ou effectue une action particulière, ce n'est pas une métadonnée, c'est un événement personnalisé (consultez [la documentation sur les événements personnalisés] (/ installation / custom-events) si vous voulez en savoir plus à ce sujet).
+
+Mais s'il y a un drapeau qui vous indique qu'un utilisateur est sous le plan gratuit ou payant. Ou peut-être un code de suivi vous montrant d'où vient cet utilisateur? Ce sont tous des métadonnées et vous pouvez facilement les ajouter à vos sessions.
+
+## Comment ajouter des métadonnées à une session?
+
+La première chose à faire est de configurer les champs de métadonnées directement dans la plateforme.
+
+Si vous sautez cette étape, vous ne pourrez pas enregistrer d'informations, alors n'oubliez pas!
+
+Pour ce faire, vous allez à la page de configuration de votre projet en cliquant sur la roue dentée en haut à droite du menu supérieur:
+
+![L'icône des paramètres du projet] (./images/metadata/metadata1.png)
+
+Une fois là-bas, cliquez sur l'élément de menu Métadonnées dans le menu de gauche le plus à gauche de votre écran:
+
+![L'option Métadonnées dans le menu de gauche] (./images/metadata/metadata2.png)
+
+Cela vous mènera à l'écran de configuration des métadonnées. Assurez-vous de sélectionner le bon projet dans le menu déroulant et créez autant de champs que vous le souhaitez.
+
+![Ajout de nouvelles métadonnées] (./images/metadata/metadata3.png)
+
+Pour cet exemple, nous avons créé 3 champs pour le projet "test e-commerce":
+
+- Le "plan" qui contiendra le plan actuel de l'utilisateur.
+- La "source utm" contenant un code permettant d'identifier d'où vient l'utilisateur.
+- Et enfin, le "nombre d'articles dans le panier" contient le nombre total d'articles dans le panier de l'utilisateur.
+
+Le dernier est une pièce de données qui dépend de l'action de l'utilisateur, ce qui est différent de ce que nous recommandons. Cependant, dans cet exemple, vous verrez les limites des champs de métadonnées et pourquoi cette pièce d'information aurait dû être un événement personnalisé plutôt.
+
+Avec cette configuration prête, la prochaine étape consiste à ajouter le code nécessaire pour envoyer les données en tant que partie de votre session.
+
+### Ajout du code pour envoyer des métadonnées
+
+Pour ajouter les métadonnées à la session, nous allons utiliser la méthode `setMetadata` du traceur. Vous pouvez utiliser cette méthode à tout moment tout au long de la session de l'utilisateur, en gardant à l'esprit les deux considérations suivantes:
+
+1. Si vous appliquez plusieurs valeurs au même champ de métadonnées, seule la dernière sera enregistrée en tant que partie de la session.
+2. Toutes les valeurs doivent être des chaînes. Sinon, ils ne seront pas enregistrés. Le traceur ne convertira pas les valeurs en chaînes, alors soyez prudent à ce sujet.
+
+Pour cet exemple, nous utilisons le site de commerce électronique construit avec Next.js que nous avons utilisé pour le tutoriel sur NextJs, assurez-vous de [vérifier celui-ci] (https://docs.openreplay.com/tutorials/next) pour comprendre l'architecture sous-jacente du fournisseur de contexte illustré dans la capture d'écran suivante:
+
+![Code ajouté] (./images/metadata/metadata4.png)
+
+Les flèches rouges montrent où les mises à jour pertinentes ont été effectuées. Ce fournisseur de contexte exporte une fonction appelée `setMetadata` qui à son tour, appelle la méthode `setMetadata` du traceur.
+
+Si vous voulez un exemple fonctionnel, vous pouvez consulter [ce référentiel] (https://github.com/deleteman/nextjs-commerce-example/tree/redux_metadata/site).
+
+Maintenant, tout ce que nous avons à faire, c'est d'utiliser la fonction exportée chaque fois que nous voulons configurer les champs de métadonnées.
+
+### Définir les
+```jsx
+// inside the main component
+const { startTracking, setMetadata } = useContext(TrackerContext)
+//...
+useEffect(() => {
+    async function getProds() {
+      await startTracking()
+      setMetadata('plan', getPlan()) //addition 
+      setMetadata('utm_source', getUTMSource()) //addition
+      dispatch(getMakeUpProducts() as any)
+    }
+
+    getProds()
+  }, [dispatch])
+```

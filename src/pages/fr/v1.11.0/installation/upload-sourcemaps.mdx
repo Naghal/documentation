@@ -1,0 +1,45 @@
+---
+titre: "Télécharger des cartes source"
+metaTitle: "Télécharger des cartes source"
+metaDescription: "Téléchargez des cartes source sur OpenReplay."
+---
+
+OpenReplay prend en charge le déminage de JavaScript via des cartes source. En les téléchargeant sur OpenReplay, vous pourrez voir le contexte du code source obtenu à partir des traces de pile sous leur forme d'origine, ce qui est très utile pour déboguer le code minifié (UglifyJS) ou le code transpilé (TypeScript, ES6).
+
+## Configuration
+
+Installez le module NPM sourcemap-uploader:
+
+
+```bash
+npm i -g @openreplay/sourcemap-uploader
+```
+
+
+## Prérequis
+
+Assurez-vous que votre build produit des fichiers de cartes source séparés (.map). Par exemple, si vous êtes sur webpack, votre configuration doit inclure l'option `devtool` ci-dessous:
+
+
+```js
+{ devtool: ‘source-map’ }
+```
+
+
+## Télécharger des cartes source sur OpenReplay
+
+Ensuite, vous devez configurer votre processus de build pour créer les différents fichiers source. Les cartes source peuvent être téléchargées pour un **seul fichier**:
+
+
+```bash
+sourcemap-uploader -s https://openreplay.mycompany.com/api -k API_KEY -p PROJECT_KEY file -m ./dist/index.js.map -u https://myapp.com/index.js
+```
+
+
+Ou un **répertoire** comprenant de nombreux fichiers. Dans ce cas, l'URL doit correspondre (chemin exact) à la racine où vous téléchargez des fichiers JS à partir du répertoire. En d'autres termes, si vous avez votre `app-42.js` avec le `app-42.js.map` dans le dossier `./build` et que vous souhaitez le télécharger sur votre instance OpenReplay afin qu'il puisse être accessible via le lien `https://myapp.com/static/app-42.js`, alors la commande devrait être comme:
+
+
+```bash
+sourcemap-uploader -s https://openreplay.mycompany.com/api -k API_KEY -p PROJECT_KEY dir -m ./build -u https://myapp.com/static
+```
+

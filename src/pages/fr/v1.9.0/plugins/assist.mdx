@@ -1,0 +1,166 @@
+---
+titre: "Assist"
+metaTitle: "Assist"
+metaDescription: "Comment configurer OpenReplay Assist et soutenir vos utilisateurs finaux via l'écran en direct et WebRTC."
+---
+
+OpenReplay Assist vous permet de soutenir vos utilisateurs en voyant leur écran en direct et en sautant instantanément sur l'appel (WebRTC) avec eux sans nécessiter de logiciel de partage d'écran tiers.
+
+## Installation
+
+
+```bash
+npm i @openreplay/tracker-assist
+```
+
+
+## Utilisation
+
+### Avec le snippet JavaScript
+
+Si votre suiveur OpenReplay est configuré à l'aide du snippet JS, remplacez simplement l'occurrence `.../openreplay.js` par `.../openreplay-assist.js`. Ci-dessous un exemple de ce à quoi le script devrait ressembler après le changement:
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: "" };
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay-assist.js", 1, 0, initOpts, startOpts);
+</script>
+```
+
+
+### Avec NPM
+
+Initialisez le suiveur puis chargez le plugin `@openreplay/tracker-assist`.
+
+#### Si votre site Web est une application Web unique (SPA)
+
+
+```js
+import Tracker from '@openreplay/tracker';
+import trackerAssist from '@openreplay/tracker-assist';
+
+const tracker = new Tracker({
+  projectKey: PROJECT_KEY,
+});
+tracker.use(trackerAssist(options)); // check the list of available options below
+
+tracker.start();
+
+```
+
+
+#### Si votre application Web est rendue côté serveur (SSR)
+
+Suivez l'exemple ci-dessous si votre application est SSR. Assurez-vous que `tracker.start()` est appelé une fois que l'application est démarrée (dans `useEffect` ou `componentDidMount`).
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerFetch from '@openreplay/tracker-assist/cjs';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.use(trackerAssist(options)); // check the list of available options below
+
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, [])
+//...
+}
+```
+
+
+#### Options
+
+
+```js
+trackerAssist({
+  callConfirm?: string|ConfirmOptions;
+  controlConfirm?: string|ConfirmOptions;
+  config?: object;
+  onAgentConnect?: () => (()=>void | void);
+  onCallStart?: () => (()=>void | void);
+  onRemoteControlStart?: () => (()=>void | void);
+})
+```
+
+
+
+```js
+type ConfirmOptions = {
+  text?:string,
+  style?: StyleObject, // style object (i.e {color: 'red', borderRadius: '10px'})
+  confirmBtn?: ButtonOptions, 
+  declineBtn?: ButtonOptions
+}
+
+type ButtonOptions = HTMLButtonElement | string | {
+  innerHTML?: string, // to pass an svg string or text
+  style?: StyleObject, // style object (i.e {color: 'red', borderRadius: '10px'})
+}
+```
+
+
+- `callConfirm`: Personnalisez le texte et/ou la mise en page de la demande d'appel popup.
+- `controlConfirm`: Personnalisez le texte et/ou la mise en page de la demande de contrôle à distance popup.
+- `config`: Contient toute configuration de serveur ICE/TURN personnalisée. Par défaut `{ 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }], 'sdpSemantics': 'unified-plan' }`.
+- `onAgentConnect: () => (()=>void | void)`: Cette fonction de rappel est déclenchée dès que la session en direct commence. Il peut également renvoyer `onAgentDisconnect` qui sera appelé lorsque la session est déconnectée. En cas de connexion instable, cela peut être appelé plusieurs fois. Ci-dessous un exemple:
+
+
+```js
+onAgentConnect = () => {
+  console.log("Live session started")
+  const onAgentDisconnect =  () => console.log("Live session stopped")
+  return onAgentDisconnect
+}
+```
+
+
+- `onCallStart: () => (()=>void | void)`: Cette fonction de rappel est déclenchée dès que l'appel (webRTC) commence. Il peut également renvoyer `onCallEnd` qui sera appelé lorsque l'appel se termine. En cas de connexion instable, cela peut être appelé plusieurs fois. Ci-dessous un exemple:
+
+
+```js
+onCallStart: () => {
+  console.log("Call started")
+  const onCallEnd = () => console.log("Call ended")
+  return onCallEnd
+}
+```
+
+
+- `onRemoteControlStart: () => (()=>void | void)`: Cette fonction de rappel est déclenchée dès que la session de contrôle à distance commence. Il peut également renvoyer `onRemoteControlEnd` qui sera appelé lorsque les autorisations de contrôle à distance sont révoquées. Ci-dessous un exemple:
+
+
+```js
+onCallStart: () => {
+  console.log("Remote control started")
+  const onCallEnd = () => console.log("Remote control ended")
+  return onCallEnd
+}
+```
+
+
+## Dépannage
+
+### Dépendance critique: la demande d'une dépendance est une expression
+
+Si vous exécutez tracker-assist `v3.5.14 ou antérieur` et que vous obtenez l'erreur ci-dessous lors de la compilation, appliquez ce [contournement](https://github.com/peers/peerjs/issues/630#issuecomment-910028230).
+
+
+```log
+Failed to compile.
+
+./node_modules/peerjs/dist/peerjs.min.js
+Critical dependency: the request of a dependency is an expression
+```
+

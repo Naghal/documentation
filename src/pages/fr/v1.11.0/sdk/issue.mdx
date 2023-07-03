@@ -1,0 +1,22 @@
+---
+titre: "SDK JavaScript - méthode issue"
+metaTitle: "SDK JavaScript - méthode issue"
+metaDescription: "Détails sur la méthode issue de l'SDK OpenReplay"
+---
+import Aside from '~/components/Aside.astro'
+
+Cette méthode peut être utilisée pour signaler un "[événement technique](/installation/custom-events)", également connu sous le nom d'"issue".
+Ces problèmes peuvent être utilisés pour signaler des informations supplémentaires concernant un problème que le suiveur ne peut pas détecter par défaut. Un bon exemple de ceci serait l'utilisateur essayant de payer un achat
+sur notre site de commerce électronique et recevant une erreur du passerelle de paiement. Alors que le suiveur pourrait enregistrer le chargement avec l'erreur, il ne l'identifierait pas comme un problème. Cette méthode vous permet de signaler
+ce comportement comme un problème pour un filtrage supplémentaire des sessions.
+
+<Aside type="tip">
+  Nous avons également un tutoriel détaillé sur la façon de suivre des événements personnalisés, vous pouvez le consulter [ici](/tutorials/custom-events).
+</Aside>
+
+## Signature
+
+```js
+issue(key: string, payload?: any): void
+```
+

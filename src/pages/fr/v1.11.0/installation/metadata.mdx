@@ -1,0 +1,89 @@
+---
+titre: "Métadonnées"
+metaTitle: "Métadonnées"
+metaDescription: "Comment passer des métadonnées d'utilisateur à OpenReplay. Également connu sous le nom de traits ou de variables d'utilisateur dans d'autres plates-formes."
+---
+import Aside from '~/components/Aside.astro'
+
+Des informations supplémentaires sur les utilisateurs peuvent être fournies avec des métadonnées (également connues sous le nom de traits ou de variables d'utilisateur). Ils prennent la forme de paires clé / valeur et sont utiles pour le filtrage et la recherche de sessions de relecture spécifiques.
+
+<Aside type="tip">
+Nous avons également un tutoriel détaillé sur la façon d'envoyer des métadonnées en tant que partie de votre session, vous pouvez le consulter [ici] (/tutorials/metadata).
+</Aside>
+
+## 1. Spécifiez explicitement les métadonnées
+
+Les métadonnées doivent être explicitement spécifiées à partir du tableau de bord à partir de 'Préférences> Métadonnées'. Vous pouvez ajouter jusqu'à 10 clés. Dans l'exemple ci-dessous, nous utilisons `plan`.
+
+![Ajouter des métadonnées] (/static/metadata-1.png#center)
+
+## 2. Injecter des métadonnées lors de l'enregistrement des sessions
+
+Une fois la clé (s) ajoutée (dans cet exemple `plan`), vous pouvez injecter les métadonnées au démarrage du tracker sous la forme d'une paire clé / valeur (`string`).
+
+### Avec NPM
+
+Injectez les métadonnées au démarrage du tracker (dans cet exemple `plan`).
+
+
+```js
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+
+tracker.start({
+  userID: "john@doe.com",
+  metadata: {
+    balance: "10M",
+    plan: "free"
+  }
+});
+```
+
+
+Si cela n'est pas possible (certaines ou toutes les métadonnées peuvent être définies / connues plus tard dans le flux de navigation, donc bien après le démarrage du tracker), appelez alors la méthode `setMetadata` pour le faire:
+
+
+```js
+tracker.setMetadata('plan', 'free'); // after tracker.start()
+```
+
+
+### Avec le snippet JavaScript
+
+Ci-dessous un exemple de comment injecter les métadonnées (dans cet exemple `plan`) en utilisant le snippet. Notez la variable / ligne `startOpts` ajoutée, ainsi que les paramètres qui changent dans la deuxième ligne.
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: getUserID(), metadata: { plan: getPlan()} } // use startOpts variable to inject metadata
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})(0, "GxPpaDARdn2345fgt321", "//static.openreplay.com/3.5.0/openreplay.js",1,29);
+</script>
+```
+
+
+Si cela n'est pas possible (les métadonnées sont connues plus tard dans le flux de navigation, donc bien après le démarrage du tracker), appelez alors la méthode `setMetadata` pour identifier vos utilisateurs. L'identité de l'utilisateur peut être modifiée à tout moment pendant la session en appelant `setMetadata`. Cependant, OpenReplay ne conservera que l'identifiant d'utilisateur injecté le plus récent.
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: "" };
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay.js", 1, 0, initOpts, startOpts);
+</script>
+  ...
+  OpenReplay.setMetadata("plan", "free"); // set metadata later in your code
+  ...
+```
+

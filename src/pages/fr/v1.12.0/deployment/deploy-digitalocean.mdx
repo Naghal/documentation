@@ -1,0 +1,86 @@
+---
+titre: "Déployer sur Digital Ocean"
+metaTitle: "Déployer sur Digital Ocean"
+metaDescription: "Guide étape par étape pour déployer OpenReplay sur Digital Ocean."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+La pile OpenReplay peut être installée sur une seule machine (droplet) et Digital Ocean est un candidat idéal. Voici comment le faire.
+
+## Créer un droplet
+
+1. Créez un nouveau projet (si vous ne l'avez pas encore fait) puis naviguez vers celui-ci et cliquez sur «Créer» droplet
+2. Choisissez l'image *Ubuntu Server 20.04 LTS*
+4. Optez pour le «Shared CPU» et choisissez le plan `Regular Intel | 4 CPUs | 8GB`. Ce sont les spécifications minimales, sinon les services backend d'OpenReplay ne démarreront tout simplement pas. Ils suffisent pour un volume modéré, mais si vous attendez un trafic élevé, vous devez le mettre à l'échelle à partir d'ici.
+5. Cliquez sur «Nouvelle clé SSH» dans «Authentification» et suivez les instructions pour générer une clé
+6. Donnez à votre machine un nom puis cliquez sur «Créer droplet»
+
+## Déployer OpenReplay
+
+1. Assurez-vous que votre droplet est `actif` puis connectez-vous à celui-ci:
+
+
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem ## wherever you've saved the SSH key
+INSTANCE_IP=REPLACE_WITH_DROPLET_PUBLIC_IP
+chmod 400 $SSH_KEY
+ssh -i $SSH_KEY root@$INSTANCE_IP
+```
+
+
+2. Installez OpenReplay en fournissant le domaine sur lequel il sera exécuté (par exemple DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+## Configurer TLS / SSL
+
+OpenReplay traite des données d'utilisateur sensibles et nécessite donc HTTPS pour fonctionner. C'est obligatoire, sinon le suivi ne commencera tout simplement pas à enregistrer. La même chose s'applique au tableau de bord, sans HTTPS vous ne pourrez pas rejouer les sessions utilisateur.
+
+Vous devez donc générer (ou apporter) votre propre certificat SSL.
+
+1. Tout d'abord, allez dans «Gérer»> «Réseau»> «Domaines» (ou votre autre fournisseur de service DNS) et créez un «Enregistrement A». Utilisez le domaine que vous avez précédemment fourni lors de l'étape d'installation et pointez-le vers le droplet en utilisant son adresse IP publique (peut être trouvée dans l'onglet Droplets).
+
+2. Si vous apportez votre propre certificat, créez un secret SSL en utilisant la commande suivante: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **Note:** Si vous n'avez pas de certificat, générez-en un, qui se renouvelle automatiquement, pour votre sous-domaine (celui fourni lors de l'installation) à l'aide de Let's Encrypt. Connectez-vous simplement au droplet OpenReplay, exécutez `cd /var/lib/openreplay/openreplay/scripts/helmcharts && bash certmanager.sh` et suivez les étapes.
+
+3. Si vous souhaitez activer la redirection http vers https (recommandé), décommentez alors le bloc ci-dessous, dans la section `ingress-nginx`, dans `/var/lib/openreplay/vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+Il est à noter que notre `ingress-nginx` s'exécute par défaut sur les ports `80|443`, mais cela peut être facilement modifié, si nécessaire, dans `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+
+
+4. Enfin, réinstallez OpenReplay NGINX:
+
+
+```bash
+openreplay -R
+```
+

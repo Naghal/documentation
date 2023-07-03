@@ -1,0 +1,94 @@
+---
+titre: "Zustand"
+metaTitle: "Zustand"
+metaDescription: "Plugin Zustand pour OpenReplay."
+---
+import Aside from '~/components/Aside.astro'
+
+Ce plugin vous permet de capturer les mutations/états `Zustand` et de les inspecter plus tard lors de la lecture des enregistrements de session. Cela est très utile pour comprendre et résoudre les problèmes.
+
+<Aside type="tip">
+Nous avons également un tutoriel détaillé sur la façon d'utiliser le plugin Zustand pour capturer l'état de votre application lors de l'utilisation de cette bibliothèque, vous pouvez le consulter [ici](/tutorials/zustand).
+</Aside>
+
+## Installation
+
+
+```bash
+npm i @openreplay/tracker-zustand
+```
+
+
+## Utilisation
+
+Initialisez le package `@openreplay/tracker` comme d'habitude et chargez le plugin dans celui-ci. Appelez le plugin et définissez le nom du magasin, cela retournera une instance de suivi de magasin nommée que vous pouvez appeler avec votre exemplaire de magasin en argument pour activer le suivi de ce magasin.
+
+### Si votre site Web est une application Web à page unique (SPA)
+
+
+```js
+import Tracker from '@openreplay/tracker';
+import trackerZustand from '@openreplay/tracker-zustand';
+```
+
+
+### Si votre application Web est rendue côté serveur (SSR)
+
+
+```js
+import Tracker from '@openreplay/tracker/cjs';
+import trackerZustand from '@openreplay/tracker-zustand/cjs';
+```
+
+
+### Suivi du magasin Zustand
+
+
+```js
+import create from "zustand";
+
+const tracker = new Tracker({
+  projectKey: YOUR_PROJECT_KEY,
+});
+
+const zustandPlugin = tracker.use(trackerZustand())
+// name is optional, randomly generated 
+// string if its undefined
+const bearStoreLogger = zustandPlugin('bear_store')
+
+
+const useBearStore = create(
+  bearStoreLogger((set: any) => ({
+    bears: 0,
+    increasePopulation: () => set((state: any) => ({ bears: state.bears + 1 })),
+    removeAllBears: () => set({ bears: 0 }),
+  }))
+)
+```
+
+
+## Options
+
+Vous pouvez personnaliser le comportement du plugin avec des options pour assainir vos données. Ils sont similaires à ceux du plugin standard `createLogger`.
+
+
+```js
+trackerZustand({
+  filter (mutation, state) {
+    // returns `true` if a mutation should be logged
+    // `mutation` is a `{ type, payload }`
+    return mutation.type !== "aBlacklistedMutation";
+  },
+  transformer (state) {
+    // transforms the state before logging it.
+    // for example return only a specific sub-tree
+    return state.subTree;
+  },
+  mutationTransformer (mutation) {
+    // mutations are logged in the format of `{ type, payload }`
+    // we can format it any way we want.
+    return mutation.type;
+  },
+})
+```
+

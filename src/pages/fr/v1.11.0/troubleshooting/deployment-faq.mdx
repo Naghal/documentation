@@ -1,0 +1,41 @@
+---
+titre: "FAQ de déploiement"
+metaTitle: "FAQ de déploiement"
+metaDescription: "Questions fréquemment posées (FAQ) liées au déploiement"
+---
+
+## Mon installation s'est soudainement arrêtée
+  
+Il peut y avoir plusieurs raisons à cela. Voici comment vous pouvez déboguer la situation:
+
+1. Vérifiez l'utilisation du disque dans la VM OpenReplay. Si elle est supérieure à 80%, les services ne fonctionneront pas.
+
+
+```bash  
+df -h
+```
+
+
+## La mise à niveau a échoué sans aucune erreur particulière
+  
+### Je vois "helm ou une autre opération (installation / mise à niveau / rollback) est en cours"
+
+Cela signifie généralement que vous avez réessayé l'opération d'installation / mise à niveau plusieurs fois. Exécutez la commande ci-dessous pour résoudre la situation:
+
+
+```bash
+helm rollback -n app openreplay
+```
+
+
+### Je ne vois aucune erreur, juste "installation échouée"
+
+
+```bash
+# Check for failed pods
+kubectl get pods -n app --field-selector="status.phase!=Succeeded,status.phase!=Running" -o custom-columns="POD:metadata.name"
+        
+# Check for the err logs
+stern -n app `pod name from above`
+ ```
+

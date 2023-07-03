@@ -1,0 +1,45 @@
+---
+titre: "Déploiement de mise à niveau"
+metaTitle: "Déploiement de mise à niveau"
+metaDescription: "Comment mettre à niveau votre instance vers la dernière version d'OpenReplay."
+---
+
+Mettre à niveau votre déploiement OpenReplay vers la dernière version nécessite la mise à jour à la fois de votre backend (instance) et de votre tracker.
+
+## Mise à niveau du backend
+
+1. Copiez / sauvegardez le dossier openreplay actuel vers `_version-number` comme ci-dessous:
+  
+  
+```bash 
+  mv openreplay openreplay_v1.11.0
+  ```
+
+
+2. Mettez à jour les dépendances:
+  
+
+```bash
+# Update kubernetes deprecated apis
+helm plugin install https://github.com/helm/helm-mapkubeapis
+helm mapkubeapis -n app openreplay
+	
+# Update Kubernetes
+k3s-killall.sh
+curl -sL https://get.k3s.io | sudo K3S_KUBECONFIG_MODE="644" INSTALL_K3S_VERSION='v1.25.6+k3s1' INSTALL_K3S_EXEC="--disable=traefik" sh -
+	
+# Restart kube cluster
+sudo systemctl restart k3s.service
+	
+# Download the latest CLI
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay ; sudo chmod +x /bin/openreplay
+```
+
+
+3. Mettez à niveau OpenReplay:
+
+
+```bash
+RELEASE_UPGRADE=1 openreplay --upgrade
+```
+

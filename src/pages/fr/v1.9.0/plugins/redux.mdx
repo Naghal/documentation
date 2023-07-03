@@ -1,0 +1,91 @@
+---
+titre: "Redux"
+metaTitle: "Redux"
+metaDescription: "Plugin Redux pour OpenReplay."
+---
+
+Ce plugin vous permet de capturer les actions / états Redux et de les inspecter plus tard lors de la lecture des enregistrements de session. C'est très utile pour comprendre et résoudre les problèmes.
+
+## Installation
+
+
+```bash
+npm i @openreplay/tracker-redux --save
+```
+
+
+## Utilisation
+
+Initialisez le suivi puis placez le middleware généré dans votre chaîne Redux.
+
+### Si votre site Web est une application Web unique (SPA)
+
+
+```js
+import { applyMiddleware, createStore } from 'redux';
+import OpenReplay from '@openreplay/tracker';
+import trackerRedux from '@openreplay/tracker-redux';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.start();
+const openReplayMiddleware = tracker.use(trackerRedux(<options>)); // check list of available options below
+
+//...
+const store = createStore(
+  reducer,
+  applyMiddleware(openReplayMiddleware) 
+);
+```
+
+
+### Si votre application Web est rendue côté serveur (SSR)
+
+Suivez l'exemple ci-dessous si votre application est SSR. Assurez-vous que `tracker.start()` est appelé une fois que l'application est démarrée (dans `useEffect` ou `componentDidMount`).
+
+
+```js
+import { applyMiddleware, createStore } from 'redux';
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerRedux from '@openreplay/tracker-redux/cjs';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+const openReplayMiddleware = tracker.use(trackerRedux(<options>)); // check list of available options below
+
+
+const store = createStore( // You can define/use it anywhere in response handlers
+  reducer,
+  applyMiddleware(openReplayMiddleware)
+);
+
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, []);
+  //... Use store here
+}
+
+```
+
+
+## Options
+
+Vous pouvez personnaliser le comportement du middleware avec des options pour masquer vos données.
+
+
+```js
+trackerRedux({
+  actionFilter: action => action.type !== 'DRAW', // only actions which pass this test will be recorded
+  actionTransformer: action => action.type === 'LOGIN' ? null : action,
+  actionType: action => action.type // action type for search, that's the default one
+  stateTransformer: state => {
+    const { jwt, ..._state } = state;
+    return _state;
+  },
+})
+```
+

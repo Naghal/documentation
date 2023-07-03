@@ -1,0 +1,141 @@
+---
+titre: "Axios"
+metaTitle: "Axios"
+metaDescription: "Plugin Axios pour OpenReplay."
+---
+
+Importer Aside de '~/components/Aside.astro'
+
+Ce plugin vous permet de capturer les demandes `axios` et de les inspecter plus tard lors de la lecture des enregistrements de session. C'est très utile pour comprendre et résoudre les problèmes.
+
+<Aside type="tip">
+Nous avons également un tutoriel détaillé sur la façon d'utiliser le plugin Axios pour capturer toutes les requêtes XHR, vous pouvez le consulter [ici] (/tutorials/axios).
+</Aside>
+
+## Installation
+
+
+```bash
+npm i @openreplay/tracker-axios
+```
+
+
+## Utilisation
+
+Initialisez le package `@openreplay/tracker` comme d'habitude, puis chargez le plugin `axios`. Notez que le plugin `axios` d'OpenReplay nécessite `axios@^0.21.2` en tant que dépendance connexe.
+
+### Si votre site Web est une application Web unique (SPA)
+
+
+```js
+import tracker from '@openreplay/tracker';
+import trackerAxios from '@openreplay/tracker-axios';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.use(trackerAxios(options)); // check list of available options below
+tracker.start();
+```
+
+
+### Si votre application Web est rendue côté serveur (SSR)
+
+Suivez l'exemple ci-dessous si votre application est SSR. Assurez-vous que `tracker.start()` est appelé une fois que l'application est démarrée (dans `useEffect` ou `componentDidMount`).
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerAxios from '@openreplay/tracker-axios/cjs';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.use(trackerAxios(options)); // check list of available options below
+
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, [])
+//...
+}
+```
+
+
+## Options
+
+
+```js
+trackerAxios({
+  instance: AxiosInstance;
+  failuresOnly: boolean;
+  captureWhen: (AxiosRequestConfig) => boolean;
+  sessionTokenHeader: string;
+  ignoreHeaders: Array<string> | boolean;
+  sanitiser: (RequestResponseData) => RequestResponseData | null;
+})
+```
+
+
+- `instance`: Par défaut, le plugin se connecte à l'instance axios statique, mais vous pouvez spécifier une autre avec cette option. Si vous avez plusieurs instances, vous pouvez utiliser `tracker.use (trackerAxios (myinstance))` pour chacun d'entre eux. Par défaut: `axios`.
+- `failuresOnly`: Définissez-le sur `false` si vous souhaitez enregistrer chaque demande quel que soit le code de statut. Par défaut, seules les demandes échouées sont capturées (lorsque la promesse axios est rejetée). Vous pouvez également [modifier] (https://github.com/axios/axios#request-config) ce comportement avec l'option `validateStatus`. Par défaut: `false`.
+- `captureWhen`: Vous permet de définir un filtre sur ce qui doit être capturé. La fonction sera appelée avec l'objet de configuration axios et devra renvoyer `true | false`. Par défaut: `() => true`.
+- `sessionTokenHeader`: Au cas où vous auriez activé certaines de nos [intégrations] (https://openreplay.io/integrations) (c'est-à-dire Sentry), vous pouvez utiliser cette option pour spécifier le nom de l'en-tête (c'est-à-dire 'X-OpenReplay-SessionToken'). Ce dernier est automatiquement ajouté à chaque demande axios pour contenir la valeur du jeton de session OpenReplay. Par défaut: `undefined`.
+- `ignoreHeaders`: Aide à définir une liste d'en-têtes que vous ne souhaitez pas capturer. Définissez sa valeur sur `false` pour capturer tous (`true` si aucun). Par défaut: `[ 'Cookie', 'Set-Cookie', 'Authorization' ]` afin que les en-têtes sensibles ne soient pas capturés.
+- `sanitiser`: Sanitisez les données sensibles de la demande / réponse de récupération ou ignorez complètement la demande. Vous pouvez masquer des champs sur l'objet de demande en le modifiant puis en le renvoyant à partir de la fonction:
+
+
+```typescript
+interface RequestData {
+  body: BodyInit | null | undefined; // whatewer you've put in the init.body in fetch(url, init)
+  headers: Record<string, string>;
+}
+
+interface ResponseData {
+  body: string | Object | null;  // Object if response is of JSON type
+  headers: Record<string, string>;
+}
+
+interface RequestResponseData {
+  readonly status: number;
+  readonly method: string;
+  url: string;
+  request: RequestData;
+  response: ResponseData;
+}
+
+sanitiser: (data: RequestResponseData) => { // sanitise the body or headers
+  if (data.url === "/auth") {
+    data.request.body = null
+  }
+
+  if (data.request.headers['x-auth-token']) { // can also use ignoreHeaders option instead
+    data.request.headers['x-auth-token'] = 'SANITISED';
+  }
+
+  // Sanitise response
+  if (data.status < 400 && data.response.body.token) {
+    data.response.body.token = "<TOKEN>"  
+  }
+
+  return data
+}
+
+// OR
+
+sanitiser: data => { // ignore requests that start with /secure
+  if (data.url.startsWith("/secure")) {
+    return null
+  }
+  return data
+}
+
+// OR
+
+sanitiser: data => { // sanitise request url: replace all numbers
+  data.url = data.url.replace(/\d/g, "*")
+  return data
+}
+```
+

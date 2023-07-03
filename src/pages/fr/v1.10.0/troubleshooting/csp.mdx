@@ -1,0 +1,14 @@
+---
+titre: "Politique de sécurité des contenus (CSP)"
+metaTitle: "CSP"
+metaDescription: "Politique de sécurité des contenus pour permettre à OpenReplay d'enregistrer des sessions."
+---
+import Aside from '~/components/Aside.astro'
+
+Ci-dessous se trouve la politique (CSP) permettant à OpenReplay d'enregistrer des sessions.
+
+
+```html
+worker-src ‘self’ blob: https://*.openreplay.com; script-src ‘self’ https://*.openreplay.com;
+```
+

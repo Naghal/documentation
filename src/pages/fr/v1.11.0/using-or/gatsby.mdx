@@ -1,0 +1,44 @@
+---
+titre: "Utiliser OpenReplay avec Gatsby"
+metaTitle: "Ajouter le suiveur OpenReplay à votre application Gatsby"
+metaDescription: "Apprenez à faire fonctionner le suiveur sur votre application Gatsby"
+---
+importez GoDeeperFooter de '~/components/go-deeper-footer.astro'
+
+L'installation du suiveur OpenReplay dans un projet basé sur Gatsby est relativement simple.
+
+![Sesion replay of a Gatsby site](images/gatsby-ss.png)
+
+Étant donné que Gatsby utilise React en dessous, tout ce que nous avons à faire, c'est d'ajouter le code du suiveur à l'intérieur de la page principale et d'appeler la méthode `start` en utilisant le crochet `useEffect`.
+
+Regardons ça de plus près.
+
+## Pourquoi configurer le suiveur sur un site statique?
+
+Le manque de contenu dynamique dans votre application ne signifie pas que vous ne souhaitez pas tirer parti de certaines des autres fonctionnalités d'OpenReplay.
+
+Bien que vous ne pourrez pas utiliser les reprises de session pour trouver des bogues, vous pourrez capturer des métriques intéressantes et créer [vos propres tableaux de bord personnalisés](https://docs.openreplay.com/tutorials/custom-dashboard) autour de ces métriques.
+
+Vous pouvez utiliser des métriques de performance, des web vitals et même des métriques liées aux ressources pour obtenir une idée générale de l'expérience des utilisateurs avec votre site.
+
+## Configuration du suiveur à l'intérieur de Gatsby
+
+Pour un site Gatsby statique et le point d'entrée étant le fichier `index.tsx` à l'intérieur du dossier `pages`, vous voudrez ajouter le code suivant à celui-ci:
+
+
+```jsx
+import Tracker from '@openreplay/tracker';
+const tracker = new Tracker({
+  projectKey: process.env.GATSBY_OPENREPLAY_PROJECT_KEY
+});
+
+const Index = ({data, location }) => {
+
+  React.useEffect(() => {
+    tracker.start();
+  }, [])
+
+   //the rest of your code here...
+}
+```
+

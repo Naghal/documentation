@@ -1,0 +1,35 @@
+---
+titre: "Utiliser OpenReplay avec React"
+metaTitle: "Ajouter le suiveur OpenReplay à votre application React"
+metaDescription: "Apprenez à configurer le suiveur sur votre application React"
+---
+import GoDeeperFooter from '~/components/go-deeper-footer.astro'
+import Aside from '~/components/Aside.astro'
+
+Configurer le suiveur sur une application React est assez simple.
+
+## Ajouter le code de suivi
+
+Bien que vous puissiez [obtenir une version copier-coller du code directement à partir de la plateforme lorsque vous créez un nouveau projet](/using-or/snippet#getting-the-snippet), ce code est trop basique et rendra la personnalisation et l'ajout de plugins supplémentaires beaucoup plus difficiles.
+
+Si vous construisez une SPA (Application à page unique), tout ce que vous avez à faire est d'ajouter le code suivant à votre point d'entrée:
+
+
+```jsx
+import Tracker from '@openreplay/tracker';
+
+const tracker = new Tracker({
+  projectKey: "<your project key>",  
+});
+
+function YourMainComponent({props}) {
+    //some code here...
+
+    useEffect(() => {
+        tracker.start();
+    }, [])
+
+    return //....
+}
+```
+

@@ -1,0 +1,22 @@
+---
+titre: "SDK JavaScript - méthode setMetadata"
+metaTitle: "SDK JavaScript - méthode setMetadata"
+metaDescription: "Détails sur la méthode setMetadata de l'SDK OpenReplay"
+---
+import Aside from '~/components/Aside.astro'
+
+Avec cette méthode, vous pouvez définir la valeur d'un des champs de métadonnées configurés sur la plateforme OpenReplay.
+
+<Aside type="note">
+Vous pouvez appeler cette méthode autant de fois que vous le souhaitez, tenez simplement à l'esprit que si vous utilisez le même attribut `key`, la dernière valeur que vous avez passée sera enregistrée sur la plateforme.
+Toutes les valeurs précédentes seront perdues.
+</Aside>
+
+Voir [métadonnées](/installation/metadata) pour plus de détails.
+
+## Signature
+
+```js
+setMetadata(key: string, value: string): void
+```
+

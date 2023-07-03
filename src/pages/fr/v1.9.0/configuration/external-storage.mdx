@@ -1,0 +1,96 @@
+---
+titre: "Stockage externe"
+metaTitle: "Stockage externe"
+metaDescription: "Comment modifier la destination de stockage par défaut de vos enregistrements."
+---
+
+Les enregistrements de session OpenReplay [session recordings](/configuration/cleanup-storage#recordingstorage) sont par défaut stockés sur votre instance, mais la destination peut être modifiée pour n'importe quel service de stockage d'objets compatible S3, ce qui permet une plus grande scalabilité et des coûts de déploiement plus faibles.
+
+## Modifier la destination de stockage des enregistrements
+
+Les enregistrements peuvent être persistés dans n'importe quelle destination de stockage d'objets tant qu'elle est compatible S3, ce qui rend OpenReplay compatible avec tous les principaux services cloud publics. Voici les étapes pour configurer une destination différente pour vos enregistrements:
+
+### Créer les buckets nécessaires
+
+Vous devez créer les buckets ci-dessous dans votre service de stockage d'objets. Leurs noms peuvent être différents, mais nous utiliserons les références ci-dessous dans le reste de cette section:
+- `openreplay-recordings`: où les enregistrements seront persistés
+- `openreplay-assets`: où les actifs (tels que css et polices) seront copiés
+- `openreplay-sourcemaps`: pour stocker les source maps (voir [comment les télécharger](/installation/upload-sourcemaps))
+
+Une fois le bucket créé:
+
+1. Activez CORS pour chacun des buckets ci-dessus. Si vous êtes sur AWS, ce serait sous «Permissions> Cross-origin resource sharing (CORS)» en utilisant la configuration suivante:
+
+
+```json
+[
+    {
+        "AllowedHeaders": [
+            "*"
+        ],
+        "AllowedMethods": [
+            "GET"
+        ],
+        "AllowedOrigins": [
+            "*"
+        ],
+        "ExposeHeaders": []
+    }
+]
+```
+
+
+2. Activez l'accès public au bucket `openreplay-assets` **uniquement**. Ce dernier ne contient que des feuilles de style, des icônes et des polices nécessaires à la bonne relecture de la session. Si vous êtes sur AWS, naviguez d'abord vers «Permissions> Bloquer l'accès public (paramètres du bucket)» et désactivez-le, puis allez à «Permissions> Politique de bucket» et utilisez la configuration suivante:
+
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AddPerm",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::openreplay-assets/*"
+        }
+    ]
+}
+```
+
+
+3. Enfin, assurez-vous de générer les clés d'accès appropriées à **ces 3 buckets uniquement** afin que le backend OpenReplay puisse y accéder de manière programmatique pour télécharger des fichiers. Les autorisations S3 requises sont:
+
+
+```json
+"s3:PutObject",
+"s3:GetObjectAcl",
+"s3:GetObject",
+"s3:GetObjectTagging",
+"s3:ListBucket",
+"s3:PutObjectTagging",
+"s3:GetBucketLocation"
+```
+
+
+### Mettre à jour les services backend
+
+1. Connectez-vous à votre instance OpenReplay et allez à `openreplay/scripts/helmcharts/vars.yaml` puis mettez à jour les variables d'environnement ci-dessous dans la section `s3`:
+
+| Variable | Description |
+|----------|-------------|
+| accessKey | Votre clé de stockage d'objets |
+| secretKey | Votre secret de stockage d'objets |
+| endpoint | L'URL (commençant par `https`) de votre service de stockage d'objets (par exemple, consultez la liste des [points de terminaison S3](https://docs.aws.amazon.com/general/latest/gr/s3.html) si vous êtes sur AWS, sur Google Cloud Storage, ce serait `https://storage.googleapis.com`) |
+| region | La région (le cas échéant) de vos buckets (par exemple, si vous utilisez AWS S3, ce serait quelque chose comme `us-east-1`) |
+| assetsBucket | Le nom du bucket des actifs (par exemple, `openreplay-assets`) |
+| recordingsBucket | Le nom du bucket des enregistrements (par exemple, `openreplay-recordings`) |
+| sourcemapsBucket | Le nom du bucket des sourcemaps (par exemple, `openreplay-sourcemaps`) |
+
+2. Réinstallez les services backend ci-dessus pour que les modifications prennent effet:
+
+
+```bash
+cd openreplay/scripts/helmcharts && ./openreplay-cli -I
+```
+

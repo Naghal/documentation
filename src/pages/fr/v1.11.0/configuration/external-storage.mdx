@@ -1,0 +1,74 @@
+---
+titre: "Stockage externe"
+metaTitle: "Stockage externe"
+metaDescription: "Comment modifier la destination de stockage par défaut de vos enregistrements."
+---
+
+Les enregistrements de session OpenReplay [session recordings](/configuration/cleanup-storage#recordingstorage) sont par défaut stockés sur votre instance, mais la destination peut être modifiée vers n'importe quel service d'objet de stockage compatible S3, ce qui permet une plus grande scalabilité et des coûts de déploiement plus faibles.
+
+## Modifier la destination de stockage des enregistrements
+
+Les enregistrements peuvent être persistés dans n'importe quelle destination de stockage d'objets tant qu'elle est compatible S3, ce qui rend OpenReplay compatible avec tous les principaux services cloud publics. Voici les étapes pour configurer une destination différente pour vos enregistrements:
+
+### Créer les bacs nécessaires
+
+Vous devez créer les bacs ci-dessous dans votre service de stockage d'objets. Leurs noms peuvent être différents, mais nous utiliserons les références ci-dessous dans le reste de cette section:
+- `openreplay-recordings`: où les enregistrements seront persistés
+- `openreplay-assets`: où les actifs (tels que les feuilles de style et les polices) seront copiés
+- `openreplay-sourcemaps`: pour stocker les cartes de source (voir [comment les télécharger](/installation/upload-sourcemaps))
+
+Une fois le bac créé:
+
+1. Activez CORS pour chacun des bacs ci-dessus. Si vous êtes sur AWS, ce serait sous «Permissions> Cross-origin resource sharing (CORS)» en utilisant la configuration suivante:
+
+
+```json
+[
+    {
+        "AllowedHeaders": [
+            "*"
+        ],
+        "AllowedMethods": [
+            "GET"
+        ],
+        "AllowedOrigins": [
+            "*"
+        ],
+        "ExposeHeaders": []
+    }
+]
+```
+
+
+2. Activez l'accès public au bac `openreplay-assets` **uniquement**. Ce dernier ne contient que des feuilles de style, des icônes et des polices nécessaires pour un rejeu de session correct. Si vous êtes sur AWS, naviguez d'abord vers «Permissions> Bloquer l'accès public (paramètres du bac)» et désactivez-le, puis allez à «Permissions> Politique de bac» et utilisez la configuration suivante:
+
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AddPerm",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::openreplay-assets/*"
+        }
+    ]
+}
+```
+
+
+3. Enfin, assurez-vous de générer les clés d'accès appropriées à **ces 3 bacs uniquement** afin que le backend OpenReplay puisse y accéder de manière programmatique pour télécharger des fichiers. Les autorisations S3 requises sont:
+
+
+```json
+"s3:PutObject",
+"s3:GetObjectAcl",
+"s3:GetObject",
+"s3:GetObjectTagging",
+"s3:ListBucket",
+"s3:PutObjectTagging",
+"s3:GetBucketLocation"
+```
+

@@ -1,0 +1,78 @@
+---
+titre: "Versions obsolètes"
+metaTitle: "Versions obsolètes"
+metaDescription: "Les versions antérieures à v1.4.0 sont obsolètes."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+Si vous souhaitez mettre à niveau votre instance OpenReplay vers la dernière version, assurez-vous d'utiliser une version supérieure ou égale à `v1.4.0`. Sinon, vous êtes sur une version obsolète et vous devez d'abord mettre à niveau vers `v1.4.0` avant de pouvoir passer à une version récente (v1.8.0+).
+
+## Mise à niveau du backend (de v1.3.6 ou antérieur) à v1.4.0
+
+Tout d'abord, assurez-vous d'être sur `v1.3.6` ou antérieur. Si c'est déjà le cas, ignorez les commandes ci-dessous et passez à l'étape 1). Sinon, mettez à jour votre installation OpenReplay à `v1.3.6`:
+  
+
+```bash 
+# Copy/backup the current openreplay folder to _version-number
+mv openreplay openreplay_v1.3.5
+git clone https://github.com/openreplay/openreplay -b v1.3.6
+cd openreplay/scripts/helm
+# bash upgrade.sh <old openreplay path>
+bash upgrade.sh ~/openreplay_v1.3.5
+```
+
+
+Une fois que vous êtes sur `v1.3.6`, procédez aux étapes ci-dessous:
+
+1. Copiez / sauvegardez le dossier openreplay actuel vers `_version-number` comme ci-dessous:
+  
+  
+```bash 
+  mv openreplay openreplay_v1.3.6
+  ```
+
+
+2. Clonez la nouvelle version d'OpenReplay. Dans cet exemple, nous mettons à niveau vers v1.4.0:
+  
+  
+```bash 
+  git clone https://github.com/openreplay/openreplay -b v1.4.0
+  ```
+
+
+3. Exécutez le script ci-dessous pour mettre à niveau automatiquement votre fichier `vars.yaml` vers le nouveau format:
+ 
+  
+```bash
+  cd openreplay/scripts/helmcharts
+  ansible localhost -m template -a "src=vars_template.yaml dest=vars.yaml" -e @~/openreplay_v1.3.6/scripts/helm/vars.yaml
+  ```
+
+
+4. Mettez à niveau OpenReplay:
+
+  
+```bash
+  cd openreplay/scripts/helmcharts
+  helm ls -n app | tail -n +2 | awk '{print $1}' | xargs -I{} helm uninstall {} -n app
+  helm uninstall nginx-ingress -n nginx-ingress
+  helm upgrade --install openreplay ./openreplay -n app -f vars.yaml --atomic --set forceMigration=true
+  ```
+
+ 
+5. Si vous n'utilisez pas un équilibreur de charge et que vous avez généré votre certificat SSL via le script `certmanager.sh`:
+
+  
+```
+  cd openreplay/scripts/helmcharts && bash certmanager.sh
+  ```
+
+
+6. Mettez à jour la variable `fromVersion` dans `/openreplay/scripts/helmcharts/vars.yaml` pour refléter la nouvelle version. Par exemple, si vous passez de `v1.3.6` à `v1.4.0`, mettez à jour la variable `fromVersion` comme ci-dessous:
+ 
+  
+```yaml
+  fromVersion: "v1.4.0"
+  ```
+

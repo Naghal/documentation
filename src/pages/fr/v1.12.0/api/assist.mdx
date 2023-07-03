@@ -1,0 +1,211 @@
+---
+titre: "Assist"
+metaTitle: "Assist"
+metaDescription: "Comment rechercher toutes les sessions en direct pour un projet particulier."
+---
+
+## Récupérer les sessions en direct
+
+Disponible uniquement pour la version Entreprise (EE).
+
+Renvoie la liste des sessions en direct pour un projet particulier.
+
+### Méthode
+
+`GET`
+
+### URL
+
+`/api/v1/:projectKey/assist/sessions`
+
+### Paramètres
+
+| Nom | Type | Description |
+|----------|-------------|-------------|
+| projectKey | chaîne | L'ID du projet que vous suivez (requis) |
+
+### En-têtes de demande
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: La clé peut être trouvée dans 'Préférences' > 'Compte' > 'Organization API
+Key'.
+
+### Codes de statut
+
+`200`: Réponse envoyée sous forme de JSON dans le corps
+
+### Exemple de demande
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/aYYaFHiagqdXKEmVlmvJ/assist/sessions \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### Exemple de réponse
+
+
+```json
+{
+  "data": {
+    "total": 1,
+    "sessions": [
+      {
+        "pageTitle": "OpenReplay Blog",
+        "sessionID": "6975518573799938",
+        "metadata": {},
+        "userID": "",
+        "userUUID": "8998545b-553c-4f41-a39d-d7cba7fac2d1",
+        "projectKey": "aYYaFHiagqdXKEmVlmvJ",
+        "revID": "",
+        "timestamp": 1656437966459,
+        "trackerVersion": "3.5.11",
+        "isSnippet": true,
+        "userOs": "Mac OS",
+        "userBrowser": "Chrome",
+        "userBrowserVersion": "103.0.0.0",
+        "userDevice": null,
+        "userDeviceType": "desktop",
+        "userCountry": "FR",
+        "active": false,
+        "live": true,
+        "projectId": 3
+      }
+    ]
+  }
+}
+```
+
+
+## Rechercher des sessions en direct
+
+Rechercher dans la liste des sessions en direct pour un projet particulier.
+
+### Méthode
+
+`POST`
+
+### URL
+
+`/api/v1/:projectKey/assist/sessions`
+
+### Paramètres
+
+| Nom | Type | Description |
+|----------|-------------|-------------|
+| projectKey | chaîne | L'ID du projet que vous suivez (requis) |
+
+### Charge utile
+
+| Nom    | Type            | Description                                 |
+|---------|-----------------|------------------------------------------------------|
+| trier    | chaîne          | L'attribut de tri (par défaut: timestamp)               |
+| ordre   | chaîne          | L'ordre de tri, peut être "DESC" ou "ASC" (par défaut:DESC) |
+| page    | entier         | Le numéro de page pour la pagination (par défaut:1)           |
+| limite   | entier         | Le nombre de sessions par page (par défaut:200)        |
+| filtres | tableau de filtre | La liste des filtres, vérifiez la table suivante (par défaut:[])   |
+
+objet de filtre:
+
+| Nom     | Type                              | Description                                                                        |
+|----------|-----------------------------------|------------------------------------------------------------------------------------|
+| valeur    | tableau de chaînes insensibles à la casse | La liste des valeurs (par défaut:[])                                                    |
+| type     | chaîne insensible à la casse           | L'attribut de filtre (requis)                                                    |
+| source   | chaîne insensible à la casse           | Le nom de l'attribut métadonnées pour type=metadata (par défaut:"")               |
+| opérateur | chaîne sensible à la casse           | L'opérateur à utiliser pour chaque valeur, peut être "contains" ou "is" (par défaut:"contains") |
+
+La recherche recherchera les sessions en direct qui ont un nom d'attribut qui contient le type donné et qui ont une valeur qui contient 1 des valeurs données.
+
+PS: si `values=[]`; la recherche recherchera les sessions en direct qui ont un attribut donné.
+
+Par exemple, si vous recherchez des sessions qui ont une métadonnée spécifique (n'importe quelle valeur):
+
+```json
+{"value": [], "type": "METADATA", "source": "myMeta"}
+```
+
+
+### En-têtes de demande
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: La clé peut être trouvée dans 'Préférences' > 'Compte' > 'Organization API
+Key'.
+
+### Codes de statut
+
+`200`: Réponse envoyée sous forme de JSON dans le corps
+
+### Exemple de demande
+
+L'exemple suivant recherchera les 10 premières sessions en direct (tri inverse par timestamp) qui ont
+un `userId` contenant 'openreplay' et `metadata.plan` contenant 'trial' ou 'free'.
+
+
+```shell
+curl -X POST \
+  https://openreplay.example.com/api/v1/aYYaFHiagqdXKEmVlmvJ/assist/sessions \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+  --data-raw '{
+    "filters": [
+        {
+            "value": [
+                "trial", "free"
+            ],
+            "type": "METADATA",
+            "source": "plan",
+            "operator": "is"
+        },
+        {
+            "value": [
+                "openreplay"
+            ],
+            "type": "USERID",
+            "operator": "contains"
+        }
+    ],
+    "sort": "timestamp",
+    "order": "DESC",
+    "limit": 10,
+    "page": 1
+   }'
+```
+
+
+### Exemple de réponse
+
+
+```json
+{
+  "data": {
+    "total": 1,
+    "sessions": [
+      {
+        "pageTitle": "OpenReplay Blog",
+        "sessionID": "6975518573799185",
+        "metadata": {
+          "plan": "trial"
+        },
+        "userID": "dev@openreplay.com",
+        "userUUID": "8998545b-553c-4f41-a39d-d7cba7fac2d1",
+        "projectKey": "aYYaFHiagqdXKEmVlmvJ",
+        "revID": "",
+        "timestamp": 1656437966459,
+        "trackerVersion": "3.5.11",
+        "isSnippet": true,
+        "userOs": "Mac OS",
+        "userBrowser": "Chrome",
+        "userBrowserVersion": "103.0.0.0",
+        "userDevice": null,
+        "userDeviceType": "desktop",
+        "userCountry": "FR",
+        "active": false,
+        "live": true,
+        "projectId": 3
+      }
+    ]
+  }
+}
+```
+

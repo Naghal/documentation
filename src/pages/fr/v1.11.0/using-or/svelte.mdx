@@ -1,0 +1,119 @@
+---
+titre: "Utiliser OpenReplay avec Svelte"
+metaTitle: "Utiliser le suivi à l'intérieur d'un projet Svelte"
+metaDescription: "Apprenez à suivre vos utilisateurs sur votre projet Svelte"
+---
+import GoDeeperFooter from '~/components/go-deeper-footer.astro'
+
+L'installation du suivi OpenReplay dans un projet basé sur Svelte est relativement simple.
+
+La clé pour le faire fonctionner sera l'utilisation du contexte, qui, bien qu'il ressemble à ce que nous faisons avec Next.js, l'implémentation sera différente.
+
+## Dépôt d'exemple
+
+Si vous souhaitez consulter le code complet de ce projet, consultez [le dépôt que nous utiliserons tout au long de ce didacticiel](https://github.com/deleteman/openreplay-svelte-example).
+
+C'est une application SvelteKit d'exemple que vous pouvez cloner et tester vous-même en suivant les instructions du fichier Readme.
+
+Une fois déployé et configuré, vous devriez être en mesure de capturer des reprises de session comme indiqué dans la capture d'écran ci-dessous:
+
+![Relecture de session Svelte](images/svelte-session.png)
+
+## Utilisation du contexte pour partager des données
+
+Cette solution utilisera le contexte de Svelte, qui vous permet de partager des données entre un composant parent et tous ses enfants (comme le fournisseur de contexte de React).
+
+Dans cet exemple particulier, nous ajouterons le suivi pour la section Admin de notre application, nous définirons donc le contexte dans le fichier de mise en page Admin (`src/layout/Admin.svelte`). Ensuite, nous le démarrerons à la première page affichée à l'intérieur de cette section.
+
+## Création du contexte de suivi
+
+À l'intérieur du fichier `src/layout/Admin.svelte`, dans la balise `script`, ajoutons le code suivant:
+
+
+```jsx
+import {Tracker, key} from "../context/tracker"
+
+let tracker = new Tracker({
+    projectKey: __myapp.env.OPENREPLAY_PROJECT_KEY
+});
+  
+setContext(key, {
+ getTracker: () => tracker
+} )
+```
+ Bien sûr, vous aurez plus de code à l'intérieur de ce fichier, mais ce que vous voyez ci-dessus est pertinent pour nous pour le moment.
+
+1. Nous importons d'abord le Tracker d'OpenReplay et une variable clé (plus sur ces derniers dans un instant).
+2. Nous instancions ensuite le Tracker. Comme vous pouvez le voir, l'unique option de configuration que nous utilisons est la clé du projet, que vous obtiendrez à partir de l'interface utilisateur après avoir configuré le projet dans OpenReplay.
+3. Nous enregistrons l'instance du suivi dans le contexte créé en appelant `setContext`. La variable `key` sera plus tard utilisée pour récupérer cette valeur particulière du contexte.
+
+💡**Note pour les utilisateurs auto-hébergés:** si vous utilisez la version auto-hébergée d'OpenReplay, vous devrez également spécifier la propriété de configuration `ingestPoint` à l'étape 2. Cette propriété spécifie le point d'ingestion des données du suivi. Les utilisateurs du cloud n'ont pas besoin de cela, car, par défaut, le suivi saura où se trouve le point d'extrémité de la version SaaS, mais si vous l'auto-hébergez, vous devrez le spécifier (ce devrait être quelque chose comme `https://openreplay.mydomain.com/ingest`).
+
+## Utilisation du contexte de suivi
+
+Utiliser le contexte (et appeler la méthode `start`) est aussi simple que de récupérer le contexte à l'aide de la fonction `getContext` de Svelte.
+
+Le contexte avait un objet avec une fonction appelée getTracker, donc nous le déstructurons et appelons cette fonction.
+
+
+```jsx
+import {key} from "../../context/tracker"
+  
+let {getTracker} = getContext(key)
+onMount( () => {
+	let tracker = getTracker()
+	tracker.start()
+})
+```
+
+
+Ensuite, il suffit d'appeler la méthode `start` à l'intérieur du rappel `onMount`. Nous le faisons pour nous assurer que nous appelons cette méthode depuis le navigateur, sinon le suivi ne fonctionnera pas.
+
+## Le fichier contexte / suivi
+
+Nous avons utilisé ce fichier à la fois, alors il est temps de jeter un coup d'œil rapide.
+
+Ce fichier exporte deux éléments principaux:
+
+1. La classe `Tracker`, que nous avons instanciée dans le fichier de mise en page.
+2. Nous utilisons la variable `key` pour enregistrer et récupérer le contexte.
+
+Voici le contenu du fichier:
+
+
+```jsx
+import Tracker from '@openreplay/tracker'
+
+const key = Symbol("openreplay tracker")
+
+export {Tracker, key}
+```
+
+
+La seule chose intéressante ici est que la variable `key` n'est pas une simple chaîne, c'est en fait un `Symbol`. La raison en est d'éviter les collisions de noms potentielles avec d'autres bibliothèques tierces qui utilisent également le contexte.
+
+## Prise en charge des variables ENV
+
+La dernière chose à examiner ici est la façon dont nous gérons la clé du projet, car elle ne doit pas être codée en dur dans votre code.
+
+Habituellement, vous utiliseriez une variable d'environnement pour cela, mais étant donné que nous avons besoin de ces données dans le navigateur et que Svelte ne fournit pas un moyen facile de le faire, nous résoudrons ce problème avec deux packages: [dotevn] (https://www.npmjs.com/package/dotenv) et [@rollup/plugin-replace] (https://www.npmjs.com/package/@rollup/plugin-replace).
+
+D'un côté, nous utiliserons le package dotenv pour avoir la possibilité de définir nos variables d'environnement dans un fichier `.env`. Nous définirons celle dont nous avons besoin:
+
+
+```jsx
+OPENREPLAY_PROJECT_KEY="<YOUR PROJECT KEY>"
+```
+
+
+D'un autre côté, étant donné que nous ne pouvons pas utiliser `dotenv` dans notre code côté client (car il dépend du module `fs`, qui n'est clairement pas disponible dans le navigateur), nous utiliserons le plugin de remplacement pour le rouleau. Ce plugin remplacera le code dans nos fichiers par ce que nous lui dirons. Donc, nous configurons le plugin pour remplacer la chaîne `"__myapp.env.OPENREPLAY_PROJECT_KEY"` par la clé de projet réelle chargée à partir du fichier `.env` (grâce au package dotenv).
+
+Pour y parvenir, ouvrez le fichier `rollup.config.js` à la racine du projet et ajoutez le code suivant dans la clé `plugins`.
+
+
+```jsx
+replace({
+  "__myapp.env.OPENREPLAY_PROJECT_KEY": `"${process.env.OPENREPLAY_PROJECT_KEY}"`
+})
+```
+

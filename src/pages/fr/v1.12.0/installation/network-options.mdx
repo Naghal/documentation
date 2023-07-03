@@ -1,0 +1,44 @@
+---
+titre: "Options réseau"
+metaTitle: "Options réseau"
+metaDescription: "Plugin d'options réseau pour OpenReplay."
+---
+import Aside from '~/components/Aside.astro'
+
+Cette page décrit l'espace de noms `network` de l'option javascript SDK OpenReplay [options](/sdk/constructor). Il se rapporte à la capture des demandes réseau telles que `fetch` et `XHR`, y compris les charges utiles si nécessaire, et à les inspecter plus tard lors de la lecture des enregistrements de session. C'est très utile pour comprendre et résoudre les problèmes.
+
+## Options
+
+- `failuresOnly`: Capture les demandes ayant un code d'état HTTP 4xx-5xx. Par défaut: `false`.
+- `sessionTokenHeader`: Au cas où vous auriez activé l'une de nos [intégrations](/integrations) backend (c'est-à-dire Sentry), vous pouvez utiliser cette option pour spécifier le nom de l'en-tête (ou activer l'en-tête par défaut 'X-OpenReplay-SessionToken' en mettant l'option à `true`). Ce dernier est automatiquement ajouté à chaque demande fetch / XHR pour contenir la valeur du jeton de session OpenReplay. Par défaut: `false`.
+- `ignoreHeaders`: Aide à définir une liste d'en-têtes que vous ne souhaitez pas capturer. Définissez sa valeur sur `false` pour capturer tous (`true` si aucun). Par défaut: `['Cookie', 'Set-Cookie', 'Authorization']` afin que les en-têtes sensibles ne soient pas capturés.
+- `capturePayload`: Stocke les corps de demande / réponse. Cela peut être très utile pour le dépannage, mais peut devenir lourd sur l'utilisation du réseau si votre application utilise extensivement les demandes Fetch / XHR. Par défaut: `false`.
+
+<Aside type="caution">
+	La capture des corps HTTP peut enregistrer des données hautement sensibles (par exemple des mots de passe) ou des informations privées que votre application peut envoyer / recevoir dans des demandes Fetch / XHR, alors assurez-vous de nettoyer ces données à l'aide de l'option `sanitizer` ci-dessous.
+</Aside>
+
+- `captureInIframes`: Pour désactiver le suivi du réseau à l'intérieur des iFrames. Par défaut: `true`.
+- `axiosInstances`: Pour spécifier les instances axios personnalisées à inclure dans le suivi.
+- `sanitizer`: Nettoyez les données sensibles des demandes / réponses Fetch / XHR ou ignorez complètement la demande. Vous pouvez masquer les champs sur l'objet de demande en les modifiant puis en les renvoyant à partir de la fonction (voir les exemples ci-dessous). La sanitisation est appliquée **après** tous les filtrages et modifications induits par les autres options (c'est-à-dire que l'argument ne contiendra pas de charge utile `body` si `capturePayload` n'a pas été explicitement défini sur `true`).
+
+## Exemples
+
+Voici des exemples sur la façon d'utiliser l'option `network`.
+
+### Avec NPM
+
+### Avec le snippet JavaScript
+
+Notez la variable / ligne `initOpts` pour définir l'option `network`.
+```js
+network?: {
+  failuresOnly: boolean;
+  sessionTokenHeader: string | boolean;
+  ignoreHeaders: Array<string> | boolean;
+  capturePayload: boolean;
+  sanitizer: (RequestResponseData) => RequestResponseData | null;
+  captureInIframes: boolean;
+  axiosInstances: AxiosInstance[];
+}
+```

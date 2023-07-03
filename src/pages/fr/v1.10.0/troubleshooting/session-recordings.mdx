@@ -1,0 +1,71 @@
+---
+titre: "Problèmes d'enregistrement de session"
+metaTitle: "Problèmes d'enregistrement de session"
+metaDescription: "Toutes sortes de problèmes empêchant les reprises d'être capturées ou affichées correctement."
+---
+
+Les enregistrements apparaissent dans le tableau de bord quelques minutes (~4min) après la fin d'une session. Une session est considérée comme terminée lorsque l'utilisateur ferme l'onglet ou le navigateur, se déconnecte (plus de 2min) ou dépasse 2 heures (auquel cas une nouvelle session commence). Chaque onglet mène à un nouvel enregistrement tandis que le rechargement d'un onglet existant n'en déclenche pas un nouveau.
+
+Cette section vise à vous aider à dépanner les problèmes courants dans les reprises de session.
+
+## Les reprises ne s'affichent pas
+
+Avant de commencer à déboguer les enregistrements de session, assurez-vous de capturer tout le trafic. Cliquez sur le bouton *Gérer* à côté de la section Sessions et activez *Capture All*.
+
+Une autre erreur courante consiste à démarrer le suivi deux fois, ce qui empêche les sessions d'être enregistrées. Cela se produit généralement lorsque les développeurs passent de la configuration basée sur le script à l'utilisation du package npm, alors assurez-vous d'avoir l'un ou l'autre.
+
+### Vérifier l'installation
+
+Si vous n'êtes pas sûr de la configuration, ouvrez l'inspecteur du navigateur et vérifiez l'onglet Réseau pour voir s'il y a des demandes XHR (recherchez «ingest») faites à votre IP / domaine (ou *.openreplay.com si vous êtes sur OpenReplay Cloud).
+
+Une autre façon serait de mettre à jour le constructeur du suivi et de journaliser un message au démarrage.
+
+### Tester en localhost
+
+OpenReplay a besoin d'un accès public pour copier certaines ressources de votre application (CSS, polices et icônes) afin de les afficher correctement. Votre site doit également utiliser SSL / HTTPS, sinon le suivi ne démarrera pas. Pour ces raisons, les sessions ne seront pas capturées en localhost, à moins que vous ne appliquiez ce [contournement](/troubleshooting/localhost).
+
+### Le site n'est pas en HTTPS
+
+Pour des raisons de sécurité, le suivi ne fonctionne que sur les applications Web qui utilisent SSL (HTTPS). Si votre site est en HTTP, le suivi ne démarrera pas.
+
+### CSP manquant
+
+Si vous voyez une erreur similaire à celle ci-dessous, OpenReplay n'a pas pu démarrer en raison d'une politique de sécurité du contenu manquante. Voir [ici](/troubleshooting/csp) pour la politique à ajouter.
+
+![CSP Issue](/static/csp-issue.jpg#center)
+
+### OpenReplay est bloqué
+
+Le script d'enregistrement peut être bloqué par une extension de navigateur comme un bloqueur de publicité. Utilisez l'inspecteur de votre navigateur pour vérifier si les demandes échouent. Dans ce cas, ajoutez une exception pour le domaine sur lequel le backend OpenReplay est installé (ou openreplay.com si vous êtes sur l'offre Cloud).
+
+### En raison d'un navigateur non pris en charge
+
+OpenReplay lance une exception lorsqu'il s'exécute dans un navigateur non pris en charge. Voir [ici](/troubleshooting/supported-browsers) pour la liste des navigateurs pris en charge.
+
+## Les reprises ne s'affichent pas correctement
+
+### Les styles sont manquants
+
+OpenReplay a besoin d'accéder aux ressources, telles que votre css, pour que les reprises fonctionnent. En fait, ces fichiers sont copiés puis mis en cache par notre backend afin que vous puissiez voir les anciens enregistrements même si votre application Web a changé. C'est pourquoi vous devez vous assurer que vos styles (ainsi que les icônes et les polices) sont accessibles publiquement. Si vos actifs sont hébergés sur un domaine restreint (privé ou protégé), OpenReplay ne pourra pas les copier et les utiliser dans les reprises. Vous pouvez les copier sur un domaine accessible publiquement et utiliser ensuite l'option `resourceBaseHref` pour spécifier le domaine dans le [constructeur du suivi](/sdk/constructor).
+
+Si vos iframes de même origine ont des iframes imbriqués, assurez-vous d'utiliser un chemin absolu (dans les éléments `<link>` pointant vers vos fichiers CSS) dans chaque cadre intégré, ou utilisez l'option `resourceBaseHref` pour spécifier le domaine dans le [constructeur du suivi](/sdk/constructor).
+
+Si vous testez en localhost, les styles ne seront pas rendus car OpenReplay ne peut pas y accéder car ils sont sur votre machine. Suivez [ce guide](/troubleshooting/localhost) pour résoudre la situation.
+
+### Les images ne s'affichent pas
+
+Contrairement aux styles, les images ne sont pas mises en cache par OpenReplay mais récupérées lors d'une reprise de session. Ils devraient donc être accessibles publiquement. Si elles sont sur un CDN, assurez-vous de conserver les anciennes versions de vos images afin de pouvoir rejouer correctement les anciens enregistrements de session.
+
+### Iframes
+
+Si votre application Web comprend des iframes, vous ne pourrez pas lire leur contenu en tant que partie de vos enregistrements. Vous pouvez toujours démarrer OpenReplay à l'intérieur d'une iframe en incluant `tracker.start()`, mais elle sera considérée comme un onglet séparé, ce qui signifie qu'elle sera capturée dans un enregistrement séparé.
+
+## Les reprises sont cassées à travers les sous-domaines
+
+Les sites qui s'étendent sur de nombreux sous-domaines généreront plusieurs sessions pour la même visite. Vous pouvez les assembler en un seul enregistrement en passant `sessionHash` à la méthode `start()` du suivi. `sessionHash` peut être conservé puis récupéré à partir de votre stockage inter-domaines (par exemple, des cookies).
+```js
+const tracker = new OpenReplay({
+	projectKey: PROJECT_KEY,
+	onStart: ({ sessionID }) => console.log("OpenReplay tracker started with session: ", sessionID),
+});
+```
