@@ -1,0 +1,35 @@
+---
+configuration: |
+    importer Bouton à partir de '../../components/Button.astro'
+    importer Liste des contributeurs à partir de '../../components/ContributorList.astro'
+    importer Onglets de gestionnaire de package à partir de '~/components/tabs/PackageManagerTabs.astro'
+    
+
+mise en page: ~/layouts/MainLayout.astro
+titre: Commencer
+description: Une introduction de base à Astro.
+i18nReady: vrai
+---
+importer A part de '~/components/Aside.astro'
+importer { YouTube } à partir de 'astro-embed'
+importer Carte à partir de '~/components/Card'
+
+<h2>Qu'est-ce que OpenReplay?</h2>
+
+<Aside type="tip" title=" saviez-vous?">
+    texte ici...
+    </Aside>
+  
+INTRO
+:::tip[Saviez-vous?]
+ Astro vous aide à créer des sites Web plus rapides avec l'architecture des îles.
+:::
+
+:::caution[Utilisation avec pnpm]
+En raison de problèmes en amont dans Prettier, le plugin ne sera pas automatiquement détecté lors de l'utilisation de [pnpm] (https://pnpm.io/). Afin de le faire trouver le plugin, le paramètre suivant doit être ajouté lors de l'exécution de Prettier:
+
+
+```shell
+prettier --write --plugin-search-dir=. .
+```
+

@@ -1,0 +1,82 @@
+---
+layout: ~/layouts/MainLayout.astro
+title: Configuration de l'éditeur
+description: Configurez votre éditeur pour construire avec Astro.
+i18nReady: true
+---
+import Badge from '~/components/Badge.astro';
+
+Personnalisez votre éditeur de code pour améliorer l'expérience des développeurs Astro et débloquer de nouvelles fonctionnalités.
+
+## VS Code
+
+[VS Code](https://code.visualstudio.com/) est un éditeur de code populaire pour les développeurs Web, développé par Microsoft. Le moteur VS Code alimente également des éditeurs de code en ligne populaires tels que [GitHub Codespaces](https://github.com/features/codespaces) et [Gitpod](https://gitpod.io/).
+
+Astro fonctionne avec n'importe quel éditeur de code. Cependant, VS Code est notre éditeur recommandé pour les projets Astro. Nous maintenons une [extension VS Code Astro officielle](https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode) qui débloque plusieurs fonctionnalités clés et améliorations de l'expérience des développeurs pour les projets Astro.
+
+- Coloration syntaxique pour les fichiers `.astro`.
+- Informations de type TypeScript pour les fichiers `.astro`.
+- [Intellisense VS Code](https://code.visualstudio.com/docs/editor/intellisense) pour l'achèvement du code, des indices et plus encore.
+
+Pour commencer, installez l'[extension VS Code Astro](https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode) dès aujourd'hui.
+
+📚 Voyez comment [configurer TypeScript](/en/guides/typescript/) dans votre projet Astro.
+
+## Autres éditeurs de code
+
+Notre incroyable communauté maintient plusieurs extensions pour d'autres éditeurs populaires, notamment :
+
+- [Extension VS Code sur Open VSX](https://open-vsx.org/extension/astro-build/astro-vscode) <span style="margin: 0.25em;"><Badge variant="accent">Officiel</Badge></span> - L'extension VS Code Astro officielle, disponible sur le registre Open VSX pour des plates-formes ouvertes telles que [VSCodium](https://vscodium.com/)
+- [Extension Nova](https://extensions.panic.com/extensions/sciencefidelity/sciencefidelity.astro/) <span style="margin: 0.25em;"><Badge variant="neutral">Communauté</Badge></span> - Fournit une coloration syntaxique et un achèvement du code pour Astro à l'intérieur de Nova
+- [Plugin Vim](https://github.com/wuelnerdotexe/vim-astro) <span style="margin: 0.25em;"><Badge variant="neutral">Communauté</Badge></span> - Fournit une coloration syntaxique, une indentation et un pliage de code pour Astro à l'intérieur de Vim ou Neovim
+- Plugins [LSP](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#astro) et [TreeSitter](https://github.com/virchau13/tree-sitter-astro) de Neovim <span style="margin: 0.25em;"><Badge variant="neutral">Communauté</Badge></span> - Fournit une coloration syntaxique, une analyse treesitter et un achèvement du code pour Astro à l'intérieur de Neovim
+
+### IDEs JetBrains
+
+Nous aimerions soutenir [Webstorm IDE](https://www.jetbrains.com/webstorm/). Malheureusement, il ne prend pas en charge les serveurs de langage et nous n'avons pas la bande passante pour écrire et maintenir une extension entièrement séparée dans une autre langue que notre code de base existant. Visitez le [ticket de support JetBrains pertinent](https://youtrack.jetbrains.com/issue/WEB-52015/Astro-Language-Support) pour voter pour le ticket, suivre l'avancement et trouver des contournements communautaires.
+
+La prochaine [Fleet IDE](https://www.jetbrains.com/fleet/) de JetBrains _supportera_ les serveurs de langage et notre outillage actuellement disponible pourra s'exécuter sans aucun problème.
+
+## Éditeurs en ligne
+
+En plus des éditeurs locaux, Astro fonctionne également bien avec des éditeurs hébergés en ligne, notamment :
+
+- [StackBlitz](https://stackblitz.com/) et [CodeSandbox](https://codesandbox.io/) - des éditeurs en ligne qui s'exécutent dans votre navigateur, avec une coloration syntaxique intégrée pour les fichiers `.astro`. Aucune installation ou configuration requise !
+- [GitHub.dev](https://github.dev/) - vous permet d'installer l'extension VS Code Astro en tant qu'[extension web](https://code.visualstudio.com/api/extension-guides/web-extensions), ce qui vous donne accès à certaines des fonctionnalités complètes de l'extension. Actuellement, seule la coloration syntaxique est prise en charge.
+- [Gitpod](https://gitpod.io/) - un environnement de développement complet dans le cloud qui peut installer l'extension VS Code Astro officielle à partir d'Open VSX.
+
+## Autres outils
+
+### ESLint
+
+[ESLint](https://eslint.org/) est un linter populaire pour JavaScript et JSX. Pour le support Astro, [un plugin maintenu par la communauté](https://github.com/ota-meshi/eslint-plugin-astro) peut être installé.
+
+Voyez [le guide de l'utilisateur du projet](https://ota-meshi.github.io/eslint-plugin-astro/user-guide/) pour plus d'informations sur la façon d'installer et de configurer ESLint pour votre projet.
+
+### Prettier
+
+[Prettier](https://prettier.io/) est un formateur populaire pour JavaScript, HTML, CSS et plus encore. Pour ajouter le support de la mise en forme des fichiers `.astro`, utilisez [le plugin Prettier Astro officiel](https://github.com/withastro/prettier-plugin-astro).
+
+Pour commencer, installez d'abord Prettier et le plugin :
+
+
+```shell
+npm install --save-dev prettier prettier-plugin-astro
+```
+
+
+Prettier détectera alors automatiquement le plugin et l'utilisera pour traiter les fichiers `.astro` lorsque vous l'exécuterez :
+
+
+```shell
+prettier --write .
+```
+
+
+Voyez le [README du plugin Prettier](https://github.com/withastro/prettier-plugin-astro/blob/main/README.md) pour plus d'informations sur ses options prises en charge, comment configurer Prettier à l'intérieur de VS Code et plus encore.
+
+:::caution[Utilisation avec pnpm]
+En raison de problèmes en amont à l'intérieur de Prettier, le plugin ne sera pas automatiquement détecté lors de l'utilisation de [pnpm](https://pnpm.io/). Afin de le faire trouver le plugin, le paramètre suivant doit être ajouté lors de l'exécution de Pre
+```shell
+prettier --write --plugin-search-dir=. .
+```
