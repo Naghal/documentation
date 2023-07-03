@@ -1,0 +1,13 @@
+INTRO
+:::tip[¿Sabías?]
+Astro te ayuda a construir sitios web más rápidos con la "Arquitectura de Islas".
+:::
+
+:::caution[Usando con pnpm]
+Debido a problemas en la parte superior de Prettier, el plugin no se detectará automáticamente cuando se use [pnpm] (https://pnpm.io/). Para que lo encuentre, se debe agregar el siguiente parámetro cuando se ejecuta Prettier:
+
+
+```shell
+prettier --write --plugin-search-dir=. .
+```
+

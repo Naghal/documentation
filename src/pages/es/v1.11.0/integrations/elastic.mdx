@@ -1,0 +1,24 @@
+
+```shell
+POST /_security/api_key
+{
+  "name": "openreplay-api-key",
+  "role_descriptors": {
+    "openreplay-role": {
+      "cluster": [
+        "all"
+      ],
+      "index": [
+        {
+          "names": [
+            "*log*"
+          ],
+          "privileges": [
+            "read"
+          ]
+        }
+      ]
+    }
+  }
+}
+```

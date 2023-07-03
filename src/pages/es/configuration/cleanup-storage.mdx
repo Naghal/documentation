@@ -1,0 +1,92 @@
+Título: "Limpieza de almacenamiento"
+metaTítulo: "Limpieza de almacenamiento"
+metaDescripción: "Elimine grabaciones en lote de la base de datos y limpie su almacenamiento".
+
+importar A parte de '~/componentes/Aside.astro'
+
+Cada grabación existe en forma de un archivo y una entrada en la base de datos. OpenReplay descarga lo necesario para reproducir una sesión (mutaciones DOM, coordenadas del mouse, registros de la consola, actividad de la red y mucho más) en 3 archivos (2 para la reproducción misma y 1 para los datos de DevTools). Estos archivos se almacenan de forma predeterminada en su instancia, por lo que constituyen la mayor parte de su almacenamiento. Los metadatos de la sesión se almacenarán en la base de datos PostgreSQL para siempre, pero después de 180 días el archivo que contiene la grabación caducará / se eliminará a través de una política de ciclo de vida de minio.
+
+Hay 2 formas de limpiar el almacenamiento en su instancia de OpenReplay: automatizado (CLI) y manual.
+
+## Limpieza de datos (CLI)
+
+Este proceso está completamente automatizado a través de nuestra CLI. Simplemente ejecute el comando a continuación para limpiar su almacenamiento eliminando datos tanto de Postgres (donde se almacenan los eventos) como de minio (donde se guardan las grabaciones):
+
+## Limpieza de datos (Manual)
+
+Los datos se pueden eliminar tanto de la base de datos (donde se almacenan los eventos) como de minio (donde se guardan las grabaciones).
+
+### Limpieza de grabaciones
+
+Si alguna vez necesita liberar algo de espacio, inicie sesión en su instancia de OpenReplay y siga los pasos a continuación:
+
+1. Ejecutar `k9s -n db`
+2. Usar las flechas del teclado para navegar por la lista y llegar al contenedor `minio-*`
+3. Presione `s` para tener acceso a la shell al contenedor Minio (almacenamiento de objetos)
+4. Ejecutar `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+5. Ejecutar `mc rm --recursive --dangerous --force --older-than 7d minio/mobs` (es decir, eliminar archivos que tengan más de 7 días)
+6. Usar `exit` para salir del contenedor Minio
+7. Ejecutar `:quit` para salir de la CLI de Kubernetes
+
+#### Cambiar la política de ciclo de vida predeterminada
+
+Si está usando minio (instalación vanilla), puede cambiar la política de ciclo de vida predeterminada de esta manera:
+
+1. Ejecutar `k9s -n db`
+2. Usar las flechas del teclado para navegar por la lista y llegar al contenedor `minio-*`
+3. Presione `s` para tener acceso a la shell al contenedor Minio (almacenamiento de objetos)
+6. Ejecutar `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+7. Para limpiar automáticamente las grabaciones 14 días después de su creación
+
+### Limpieza de base de datos (PostgeSQL)
+
+Dependiendo de su uso, los datos se pueden eliminar de varias tablas y de diferentes maneras.
+
+#### Conectar a PostgreSQL
+
+Conéctese a su instancia de OpenReplay, luego:
+
+1. Ejecutar `k9s -n db`
+2. Usar las flechas del teclado para navegar por la lista y llegar al contenedor `postgresql-*`
+3. Presione `s` para tener acceso a la shell al contenedor Postgres
+4. Ejecutar `PGPASSWORD=MY_PG_PASSWORD psql -U postgres` (reemplazar `MY_PG_PASSWORD` con el valor de la variable `postgresqlPassword` del archivo `/var/lib/openreplay/vars.yaml`)
+5. Ejecutar su consulta de eliminación (u otra)
+6. Escribir `exit` para salir del cliente postgresql
+7. Usar `exit` para salir del contenedor Postgres
+8. Ejecutar `:quit` para salir de la CLI de Kubernetes
+
+#### Comprobar el tamaño de las tablas
+
+Para comprobar el tamaño de las tablas, puede ejecutar la siguiente consulta:
+
+#### Eliminar eventos específicos
+
+Hemos observado que la mayoría de los usuarios de OpenReplay, después de comprobar los resultados de la sección anterior, decidieron eliminar eventos específicos en lugar de limpiar sesiones (especialmente `events.resources` y `events_common.requests`).
+
+Para descartar todos los datos de eventos, puede ejecutar cualquiera de las siguientes consultas, pero tenga en cuenta que esto afectará los valores de las tarjetas, los mapas de clics, la lista de eventos y otras características.
+
+<Aside type="caution">
+	Esto se hace bajo su propio riesgo, así que tenga mucho cuidado al realizar tales acciones en la base de datos, ya que son irreversibles y podrían afectar a varias características de OpenReplay.
+</Aside>
+
+#### Eliminar sesiones específicas por tiempo
+
+Si desea limpiar todas las sesiones, vaya a [la siguiente parte] (#delete-all-sessions) ya que es más rápido y libera espacio de almacenamiento al instante.
+
+Use la siguiente consulta SQL si desea limpiar los datos de su base de datos (PostgreSQL). Reemplace el `2021-01-01` con la fecha a partir de la cual mantener las grabaciones. Es una eliminación en cascada, por lo que todas las grabaciones, así como sus eventos correspondientes, se eliminarán de la base de datos.
+
+<Aside type="caution">
+	Esto se hace bajo su propio riesgo, así que tenga mucho cuidado al realizar tales acciones en la base de datos, ya que son irreversibles.
+
+Para la edición Enterprise de OpenReplay, estas consultas también eliminarán las sesiones de la bóveda.
+</Aside>
+
+Después de ejecutar la consulta anterior, la base de datos no liberará el espacio de almacenamiento de inmediato, ya que programará una limpieza para más tarde, para forzar manualmente que libere el almacenamiento, puede ejecutar las siguientes consultas:
+
+<Aside type="note">
+	Estas consultas bloquearán cada tabla para que no esté disponible, y puede tardar horas en terminar
+	según su base de datos, si todavía tiene
+```bash
+# To clean data older than 14 days
+openreplay --cleanup 14
+```

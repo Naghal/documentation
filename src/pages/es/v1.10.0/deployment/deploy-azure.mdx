@@ -1,0 +1,8 @@
+
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem ## only if you've previously created an SSH key
+chmod 400 $SSH_KEY
+INSTANCE_IP=REPLACE_WITH_INSTANCE_PUBLIC_IP
+ssh <username>@$INSTANCE_IP ## or ssh -i $SSH_KEY <username>@$INSTANCE_IP if you have a key
+```

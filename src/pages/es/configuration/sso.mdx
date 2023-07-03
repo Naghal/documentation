@@ -1,0 +1,60 @@
+Título: "SSO"
+metaTitle: "SSO"
+metaDescription: "Cómo configurar Single-Sign-On (SSO) a través de SAML2".
+---
+import ORDynamicCode from '../../../components/Code/ORDynamicCode';
+export const initialValues={domain:"TU_DOMINIO",tenantKey:"CLAVE_DEL_ARRENDATARIO"};
+export const ignoreValues={jumpcloud:"https://sso.jumpcloud.com"};
+
+Single-Sign-On (a través de SAML2) solo está disponible en la edición Enterprise de OpenReplay.
+
+## Configuración del proveedor de identidad (IDP)
+
+En el panel de control de su proveedor de identidad, cree una nueva aplicación llamada `openreplay` (puede usar este <a href="https://docs.openreplay.com/static/OpenReplay.png" target="_blank">icono</a>), En la página de configuración, asegúrese de establecer el siguiente valor (asegúrese de reemplazar <code>{initialValues.domain}</code> con el valor correcto, por ejemplo `https://openreplay.mycompany.com`):
+
+| Variable | Valor |
+|----------|-------------|
+| ACS URL (también llamada URL de inicio de sesión único o URL del consumidor) | <code><ORDynamicCode id="domain" initialValue={initialValues.domain} client:idle/>/api/sso/saml2/acs/</code> |
+| Entity ID (también llamado Audiencia) | <code><ORDynamicCode id="domain" initialValue={initialValues.domain} client:idle/>/api/sso/saml2/metadata/</code> |
+| URL de cierre de sesión único (también llamado URL SLO) | <code><ORDynamicCode id="domain" initialValue={initialValues.domain} client:idle/>/api/sso/saml2/sls/</code> (opcional) |
+| Name ID (a veces es configurable en la sección "Declaraciones de atributos" o "Parámetros") | `Email` o `EmailAddress` o `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`, dependiendo de su proveedor de identidad |
+| Iniciador SAML | Establecer en `Proveedor de servicios` (opcional) |
+
+En la sección "Declaraciones de atributos" o "Parámetros", asegúrese de definir los siguientes campos:
+
+| Campo | Valor |
+|----------|-------------|
+| tenantKey | <code><ORDynamicCode id="tenantKey" initialValue={initialValues.tenantKey} client:idle/></code> su valor se puede encontrar en el Panel de control, en 'Preferencias' > 'Cuenta' |
+| firstName | `user.firstName` |
+| lastName |  `user.lastName` |
+| internalId | ID interno o `user.email` (la ID del usuario en su sistema de gestión de identidad) (opcional) |
+| role | El rol del usuario, dependiendo de su proveedor de identidad, puede ser `user.role` o `group`, etc. (opcional, predeterminado = `member`) |
+| adminPrivileges | Si el usuario tiene privilegios de administrador o no, si este campo contiene cualquier valor diferente de `false`, se considerará como `true`. (opcional, predeterminado = `false`) |
+
+Ahora debería tener todos los valores necesarios para la siguiente sección/paso.
+
+## Configuración de SSO (SAML2)
+
+Para habilitar SSO, ejecute `openreplay -e` y descomente luego actualice las siguientes variables de entorno en la sección `chalice`:
+
+| Variable | Descripción |
+|----------|-------------|
+| idp_entityId | El `entityId` de su proveedor de identidad, también conocido como `URL del emisor` |
+| idp_sso_url | El `singleSignOnService` de su proveedor de identidad, también conocido como `Punto final SAML 2.0 (HTTP)` |
+| idp_x509cert | El `x509cert`, debe ser una cadena de una línea, sin saltos de línea. Puede usar <a href="https://www.samltool.com/format_x509cert.php" title="FORMAT A X509 CERTIFICATE" target="_blank">esta herramienta</a> para dar formato a su valor |
+| idp_name | El nombre del proveedor de identidad (opcional) |
+| idp_sls_url | El `singleLogoutService` de su proveedor de identidad, también conocido como `SLO Endpoint (HTTP)` (opcional) |
+| enforce_SSO | Si se establece en `true`, todas las conexiones con nombre de usuario y contraseña se bloquearán (opcional, predeterminado=`false`) |
+
+Luego, guarde y salga usando `:wq` para que los cambios surtan efecto:
+
+## Certificado de OpenReplay
+
+Esto es opcional, a partir de v1.10.0, puede agregar un certificado x509 para una mayor seguridad de SSO:
+
+1. ejecute este comando en su servidor o en su máquina segura (puede cambiar el tiempo de validez de su certificado según sus necesidades): 
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout openreplay-sso.key -out openreplay-sso.crt
+```
+

@@ -1,0 +1,74 @@
+---
+título: "Almacenamiento externo"
+metaTitle: "Almacenamiento externo"
+metaDescription: "Cómo cambiar el destino de almacenamiento predeterminado de sus grabaciones."
+---
+
+Las grabaciones de sesión de OpenReplay [session recordings](/configuration/cleanup-storage#recordingstorage) se almacenan por defecto en su instancia, pero el destino se puede cambiar a cualquier servicio de almacenamiento de objetos compatible con S3, lo que permite una mayor escalabilidad y menores costos de implementación.
+
+## Cambiar el destino de almacenamiento de grabaciones
+
+Las grabaciones se pueden persistir en cualquier destino de almacenamiento de objetos siempre que sea compatible con S3, lo que hace que OpenReplay sea compatible con todos los principales servicios de nube pública. A continuación se muestran los pasos para configurar un destino diferente para sus grabaciones:
+
+### Crear los buckets necesarios
+
+Debe crear los siguientes buckets en su servicio de almacenamiento de objetos. Sus nombres pueden ser diferentes, pero usaremos las siguientes referencias en el resto de esta sección:
+- `openreplay-recordings`: donde se persistirán las grabaciones
+- `openreplay-assets`: donde se copiarán los recursos (como css y fuentes)
+- `openreplay-sourcemaps`: para almacenar mapas de origen (ver [cómo cargarlos](/installation/upload-sourcemaps))
+
+Una vez creado el bucket:
+
+1. Habilite CORS para cada uno de los buckets anteriores. Si está en AWS, eso sería bajo 'Permisos> Compartir recursos de origen cruzado (CORS)' usando la siguiente configuración:
+
+
+```json
+[
+    {
+        "AllowedHeaders": [
+            "*"
+        ],
+        "AllowedMethods": [
+            "GET"
+        ],
+        "AllowedOrigins": [
+            "*"
+        ],
+        "ExposeHeaders": []
+    }
+]
+```
+
+
+2. Habilite el acceso público al bucket `openreplay-assets` **solo**. Este último contiene solo hojas de estilo, iconos y fuentes que son necesarios para una correcta reproducción de la sesión. Si está en AWS, primero navegue a 'Permisos> Bloquear el acceso público (configuración del bucket)' y desactívelo, luego vaya a 'Permisos> Política de bucket' y use la siguiente configuración:
+
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AddPerm",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::openreplay-assets/*"
+        }
+    ]
+}
+```
+
+
+3. Finalmente, asegúrese de generar las claves de acceso apropiadas para **estos 3 buckets solo** para que el backend de OpenReplay pueda acceder a ellos de forma programática para cargar archivos. Los permisos S3 requeridos son:
+
+
+```json
+"s3:PutObject",
+"s3:GetObjectAcl",
+"s3:GetObject",
+"s3:GetObjectTagging",
+"s3:ListBucket",
+"s3:PutObjectTagging",
+"s3:GetBucketLocation"
+```
+

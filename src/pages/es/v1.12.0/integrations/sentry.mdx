@@ -1,0 +1,12 @@
+
+```javascript
+import OpenReplay from "@openreplay/tracker";
+import * as Sentry from "@sentry/browser";
+
+const tracker = new OpenReplay({
+	projectKey: MY_PROJECT_KEY,
+	onStart: ({ sessionToken }) => {
+	  Sentry.setTag("openReplaySessionToken", sessionToken);
+	},
+})
+```

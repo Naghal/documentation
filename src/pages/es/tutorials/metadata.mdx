@@ -1,0 +1,16 @@
+
+```jsx
+// inside the main component
+const { startTracking, setMetadata } = useContext(TrackerContext)
+//...
+useEffect(() => {
+    async function getProds() {
+      await startTracking()
+      setMetadata('plan', getPlan()) //addition 
+      setMetadata('utm_source', getUTMSource()) //addition
+      dispatch(getMakeUpProducts() as any)
+    }
+
+    getProds()
+  }, [dispatch])
+```

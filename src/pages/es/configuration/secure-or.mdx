@@ -1,0 +1,119 @@
+---
+título: "OpenReplay seguro"
+metaTitle: "OpenReplay seguro"
+metaDescription: "Configure SSL y reCaptcha para OpenReplay seguro".
+---
+
+## Configurar SSL
+
+Si está usando su propio certificado, cree un secreto SSL usando el siguiente comando: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **Nota:** Si no tiene un certificado, genere uno que se renueve automáticamente para su subdominio (el proporcionado durante la instalación) usando Let's Encrypt. Simplemente conéctese a la instancia de OpenReplay, ejecute `cd openreplay/scripts/helmcharts && bash certmanager.sh` y siga los pasos.
+
+Si desea habilitar la redirección de http a https (recomendado), edite la configuración usando `openreplay -e`, luego descomente el siguiente bloque, en la sección `ingress-nginx`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+> **Nota:** Nuestro `ingress-nginx` se ejecuta de forma predeterminada en los puertos `80|443`, pero esto se puede cambiar fácilmente, si es necesario, en `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+
+
+Guarde y salga usando `:wq` para que el servicio se vuelva a cargar.
+
+## Establecer reCaptcha
+
+OpenReplay admite reCaptcha (v2) para una seguridad adicional. Para habilitar esta protección:
+
+1. Abra `/var/lib/openreplay/vars.yaml` luego descomente y actualice las siguientes variables de entorno en la sección `chalice`:
+- `captcha_server`: La URL de su servicio reCaptcha (por ejemplo, https://www.google.com/recaptcha/api/siteverify)
+- `captcha_key`: Su clave secreta de reCaptcha
+
+2. Edite `env.js` en `openreplay/frontend/` y sustituya la variable `CAPTCHA_SITE_KEY` con su clave de sitio reCaptcha.
+3. Reconstruya el frontend:
+
+
+```bash
+cd openreplay/frontend
+IMAGE_TAG=my-custom-image PUSH_IMAGE=1 DOCKER_REPO=my-docker-user-name bash -x build.sh
+```
+
+
+4. Abra `/var/lib/openreplay/vars.yaml` y especifique su imagen de frontend recién construida en el bloque `frontend`:
+
+
+```yaml
+frontend:
+  image:
+    repository: "my-docker-username/frontend"
+    tag: "my-custom-image"
+```
+
+
+5. Reinicie los servicios de frontend y servidor web para que los cambios surtan efecto:
+
+
+```bash
+ openreplay -R
+```
+
+
+## Política de seguridad de contenido (CSP)
+
+A continuación se muestra un ejemplo de una política (CSP) para permitir que OpenReplay grabe sesiones. Esto debe adaptarse según su dominio y requisitos de seguridad:
+
+
+```html
+worker-src ‘self’ blob: https://openreplay.mycompany.com https://*.openreplay.com; script-src ‘self’ https://openreplay.mycompany.com https://*.openreplay.com;
+```
+
+
+Para aplicar su CSP a NGINX, conéctese a su instancia de OpenReplay y siga los siguientes pasos:
+
+1. Ejecute `openreplay -e` y agregue su CSP en el bloque `frontend`. Asegúrese de actualizar
+
+
+```yaml
+frontend:
+  ingress:
+    cspSnippet: |
+      add_header Content-Security-Policy "worker-src 'self' blob: https://openreplay.mycompany.com https://*.openreplay.com; script-src 'self' https://openreplay.mycompany.com https://*.openreplay.com;";
+```
+
+
+> **Nota:** Asegúrese de reemplazar las ocurrencias de `https://openreplay.mycompany.com` en la CSP anterior con el nombre de dominio de su OpenReplay. El valor debe ser el mismo que `DOMAIN_NAME` en el archivo `/var/lib/openreplay/vars.yaml`.
+
+2. Guarde y salga usando `:wq` para aplicar su CSP recién agregada
+
+## Habilitar CORS
+
+Las solicitudes de dominio cruzado se permiten, de forma predeterminada, desde todos los orígenes (`Access-Control-Allow-Origin: *`). Si desea restringir las grabaciones desde algunos dominios solo, ejecute `openreplay -e` y actualice el bloque `http` agregando las siguientes anotaciones:
+
+
+```yaml
+http:
+  ingress:
+    annotations:
+      nginx.ingress.kubernetes.io/cors-allow-methods: POST
+      nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type,Authorization,Content-Encoding
+      nginx.ingress.kubernetes.io/cors-allow-origin: https://app1.mycompany.com,https://app2.mycompany.com,https://*.mycompany.com
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+			nginx.ingress.kubernetes.io/cors-expose-headers: "Content-Length"
+```
+

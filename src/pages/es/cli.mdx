@@ -1,0 +1,63 @@
+---
+título: "CLI de OpenReplay"
+metaTitle: "CLI de OpenReplay"
+metaDescription: "Detalles sobre la utilidad CLI de OpenReplay"
+minVersion: "1.10.0"
+---
+
+A partir de la versión 1.10.0, hemos lanzado nuestra utilidad CLI. Con ella, las tareas más comunes que tendrías que ejecutar para administrar tu versión autohospedada de OpenReplay ahora se pueden hacer con un simple comando.
+
+## Instalación de la CLI
+
+La CLI viene con cada versión autohospedada de OpenReplay.
+
+## Uso de la CLI
+
+La CLI tiene la siguiente sintaxis:
+
+
+```bash 
+openreplay [command] <service>
+```
+
+
+La lista de comandos disponibles es:
+
+- `-h o --help`: Este comando mostrará la lista de comandos y servicios disponibles.
+- `-s o --status`: Si desea conocer el estado de los servicios implementados, este comando le dará todo lo que necesita saber.
+- `-u o --upgrade`: Utilizado para actualizar su instalación a la última versión disponible.
+- `-U o --deprecated-upgrade /path/to/old_vars.yaml`: ????
+- `-r o --restart`: Permite reiniciar todos los servicios. Al hacerlo, puede solucionar los servicios que no responden.
+- `-R o --Reload`: Recarga la configuración de un servicio, así que úsalo solo cuando cambies algo.
+- `-p o --install-packages`: Actualiza todas las dependencias de terceros (como `kubectl`, `helm`, etc).
+- `-i o --install domain.name.com`: Instala OpenReplay en la máquina.
+- `-e o --edit`: Edita la configuración de OpenReplay instalada y recarga.
+- `-l o --logs SERVICE`: Muestra los registros de un servicio en particular.
+
+La lista de todos los servicios disponibles para la CLI es:
+
+- alertas
+- activos
+- asistencia
+- chalice
+- db
+- ender
+- frontend
+- heurísticas
+- http
+- integraciones
+- ngix-controller
+- pares
+- sink
+- sourcemapreader
+- almacenamiento
+
+## Ejemplo
+
+Para obtener el estado de implementación, ejecute el siguiente comando CLI:
+
+
+```bash 
+openreplay -s 
+```
+

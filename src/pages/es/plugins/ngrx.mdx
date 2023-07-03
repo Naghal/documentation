@@ -1,0 +1,84 @@
+---
+título: "NgRx"
+metaTítulo: "NgRx"
+metaDescripción: "Plugin NgRx para OpenReplay".
+---
+
+Este plugin le permite capturar las acciones/estado de NgRx y examinarlas más tarde al reproducir las grabaciones de sesión. Esto es muy útil para entender y solucionar problemas.
+
+## Instalación
+
+
+```bash
+npm i @openreplay/tracker-ngrx --save
+```
+
+
+## Uso
+
+Agregue el meta-reductor generado a sus "importaciones". Consulte la [documentación de NgRx](https://ngrx.io/guide/store/metareducers) para obtener más detalles.
+
+## Si su sitio web es una aplicación de página única (SPA)
+
+
+```js
+import { StoreModule } from '@ngrx/store';
+import OpenReplay from '@openreplay/tracker';
+import trackerNgRx from '@openreplay/tracker-ngrx';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+const metaReducers = [tracker.use(trackerNgRx(<options>))]; // check list of available options below
+
+tracker.start();
+
+//...
+@NgModule({
+  imports: [StoreModule.forRoot({}, { metaReducers })]
+})
+export class AppModule {}
+```
+
+
+### Si su aplicación web está renderizada en el lado del servidor (SSR)
+
+Siga el ejemplo a continuación si su aplicación es SSR. Asegúrese de que se llame a `tracker.start()` una vez que se inicie la aplicación (en `useEffect` o `componentDidMount`).
+
+
+```js
+import { StoreModule } from '@ngrx/store';
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerNgRx from '@openreplay/tracker-ngrx/cjs';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+const metaReducers = [tracker.use(trackerNgRx(<options>))]; // check list of available options below
+//...
+  @NgModule({
+    imports: [StoreModule.forRoot({}, { metaReducers })]
+  })
+  export class AppModule {}
+}
+
+```
+
+
+## Opciones
+
+Puede personalizar el comportamiento del middleware para sanear sus datos.
+
+
+```js
+trackerNgRx({
+  actionFilter: action => action.type !== 'DRAW', // only actions which pass this test will be recorded
+  actionTransformer: action => action.type === 'LOGIN' ? null : action,
+  actionType: action => action.type // action type for search, that's the default one
+  stateTransformer: state => {
+    const { jwt, ..._state } = state;
+    return _state;
+  },
+})
+```
+
