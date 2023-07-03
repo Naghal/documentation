@@ -1,0 +1,82 @@
+---
+layout: ~/layouts/MainLayout.astro
+title: Configuración del editor
+description: Configure su editor para construir con Astro.
+i18nReady: true
+---
+importar Insignia de '~/components/Badge.astro';
+
+Personalice su editor de código para mejorar la experiencia de desarrollador de Astro y desbloquear nuevas características.
+
+## VS Code
+
+[VS Code] (https://code.visualstudio.com/) es un editor de código popular para desarrolladores web, construido por Microsoft. El motor VS Code también alimenta editores de código en el navegador populares como [GitHub Codespaces] (https://github.com/features/codespaces) y [Gitpod] (https://gitpod.io/).
+
+Astro funciona con cualquier editor de código. Sin embargo, VS Code es nuestro editor recomendado para proyectos Astro. Mantenemos una [extensión oficial de VS Code Astro] (https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode) que desbloquea varias características clave y mejoras en la experiencia de desarrollador para proyectos Astro.
+
+- Resaltado de sintaxis para archivos `.astro`.
+- Información de tipo TypeScript para archivos `.astro`.
+- [VS Code Intellisense] (https://code.visualstudio.com/docs/editor/intellisense) para completar código, sugerencias y más.
+
+Para comenzar, instale la [extensión VS Code Astro] (https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode) hoy.
+
+📚 Vea cómo [configurar TypeScript] (/en/guides/typescript/) en su proyecto Astro.
+
+## Otros editores de código
+
+Nuestra increíble comunidad mantiene varias extensiones para otros editores populares, incluyendo:
+
+- [Extensión VS Code en Open VSX] (https://open-vsx.org/extension/astro-build/astro-vscode) <span style = "margin: 0.25em;"> <Insignia variante = "acento"> Oficial </Insignia> </span> - La extensión oficial de VS Code Astro, disponible en el registro Open VSX para plataformas abiertas como [VSCodium] (https://vscodium.com/)
+- [Extensión Nova] (https://extensions.panic.com/extensions/sciencefidelity/sciencefidelity.astro/) <span style = "margin: 0.25em;"> <Insignia variante = "neutral"> Comunidad </Insignia> </span> - Proporciona resaltado de sintaxis y completado de código para Astro dentro de Nova
+- [Plugin Vim] (https://github.com/wuelnerdotexe/vim-astro) <span style = "margin: 0.25em;"> <Insignia variante = "neutral"> Comunidad </Insignia> </span> - Proporciona resaltado de sintaxis, indentación y soporte de plegado de código para Astro dentro de Vim o Neovim
+- Plugins Neovim [LSP] (https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#astro) y [TreeSitter] (https://github.com/virchau13/tree-sitter-astro) <span style = "margin: 0.25em;"> <Insignia variante = "neutral"> Comunidad </Insignia> </span> - Proporciona resaltado de sintaxis, análisis treesitter y completado de código para Astro dentro de Neovim
+
+### IDEs de JetBrains
+
+Nos encantaría apoyar [Webstorm IDE] (https://www.jetbrains.com/webstorm/). Desafortunadamente, no admite servidores de lenguaje y no tenemos el ancho de banda para escribir y mantener una extensión completamente separada en un lenguaje diferente al de nuestro código base existente. Visite el [ticket de soporte de JetBrains relevante] (https://youtrack.jetbrains.com/issue/WEB-52015/Astro-Language-Support) para votar el boleto, seguir el progreso y encontrar soluciones de la comunidad.
+
+La próxima [IDE Fleet de JetBrains] (https://www.jetbrains.com/fleet/) _admitirá_ servidores de lenguaje y nuestras herramientas actualmente disponibles podrán ejecutarse allí sin ningún problema.
+
+## Editores en el navegador
+
+Además de los editores locales, Astro también funciona bien en editores hospedados en el navegador, incluyendo:
+
+- [StackBlitz] (https://stackblitz.com/) y [CodeSandbox] (https://codesandbox.io/) - editores en línea que se ejecutan en su navegador, con soporte de resaltado de sintaxis integrado para archivos `.astro`. ¡No se requiere instalación ni configuración!
+- [GitHub.dev] (https://github.dev/) - le permite instalar la extensión VS Code Astro como una [extensión web] (https://code.visualstudio.com/api/extension-guides/web-extensions), lo que le da acceso solo a algunas de las características completas de la extensión. Actualmente, solo se admite el resaltado de sintaxis.
+- [Gitpod] (https://gitpod.io/) - un entorno de desarrollo completo en la nube que puede instalar la extensión oficial de VS Code Astro desde Open VSX.
+
+## Otras herramientas
+
+### ESLint
+
+[ESLint] (https://eslint.org/) es un linter popular para JavaScript y JSX. Para el soporte de Astro, [se puede instalar un complemento mantenido por la comunidad] (https://github.com/ota-meshi/eslint-plugin-astro).
+
+Consulte [la guía de usuario del proyecto] (https://ota-meshi.github.io/eslint-plugin-astro/user-guide/) para obtener más información sobre cómo instalar y configurar ESLint para su proyecto.
+
+### Prettier
+
+[Prettier] (https://prettier.io/) es un formateador popular para JavaScript, HTML, CSS y más. Para agregar soporte para el formato de archivos `.astro`, use [el complemento oficial de Prettier Astro] (https://github.com/withastro/prettier-plugin-astro).
+
+Para comenzar, primero instale Prettier y el complemento:
+
+
+```shell
+npm install --save-dev prettier prettier-plugin-astro
+```
+
+
+Prettier luego detectará automáticamente el complemento y lo usará para procesar archivos `.astro` cuando lo ejecute:
+
+
+```shell
+prettier --write .
+```
+
+
+Consulte el [README del complemento Prettier] (https://github.com/withastro/prettier-plugin-astro/blob/main/README.md) para obtener más información sobre sus opciones admitidas, cómo configurar Prettier dentro de VS Code y más.
+
+:::caution[Usando con pnpm]
+Debido a problemas en la fuente dentro de Prettier, el complemento no se detectará automáticamente cuando se use [pnpm] (https://pnpm.io/).
+```shell
+prettier --write --plugin-search-dir=. .
+```
