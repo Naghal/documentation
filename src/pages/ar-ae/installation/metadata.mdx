@@ -1,0 +1,48 @@
+['---\ntitle: "البيانات الوصفية"\nmetaTitle: "البيانات الوصفية"\nmetaDescription: "كيفية تمرير البيانات الوصفية للمستخدم إلى OpenReplay. يعرف أيضًا باسم الصفات أو المتغيرات المستخدم في منصات أخرى."\n---\nimport Aside from \'~/components/Aside.astro\'\n\nيمكن توفير معلومات إضافية حول المستخدمين باستخدام البيانات الوصفية (يعرف أيضًا باسم الصفات أو المتغيرات المستخدم). يأخذون شكل زوج مفاتيح / قيم، وهو مفيد لتصفية وبحث عن تجارب تشغيل الجلسات المحددة.\n\n<Aside type="tip">\n  لدينا أيضًا درسًا مفصلًا حول كيفية إرسال البيانات الوصفية كجزء من جلستك، يمكنك التحقق منه [هنا](/tutorials/metadata).\n</Aside>\n\n\n## 1. تحديد البيانات الوصفية بوضوح\n\nيجب تحديد البيانات الوصفية بوضوح من لوحة التحكم من 'التفضيلات > البيانات الوصفية'. يمكنك إضافة ما يصل إلى 10 مفاتيح. في المثال أدناه، نستخدم `plan`.\n\n![Add Metadata](/static/metadata-1.png#center)\n\n## 2. إدخال البيانات الوصفية عند تسجيل الجلسات\n\nبمجرد إضافة المفتاح (في هذا المثال `plan`)، يمكنك إدخال البيانات الوصفية عند بدء المتعقب في شكل زوج مفاتيح / قيمة (`string`).\n\n### مع NPM\n\nإدخال البيانات الوصفية عند بدء المتعقب (في هذا المثال `plan`).\n\n
+```js
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+
+tracker.start({
+  userID: "john@doe.com",
+  metadata: {
+    balance: "10M",
+    plan: "free"
+  }
+});
+```
+', "\n\nإذا لم يكن ذلك ممكنًا (قد يتم تعيين بعض أو كل البيانات الوصفية فقط / معروفة في وقت لاحق في تدفق التنقل، لذلك بعد بدء المتعقب)، فاستدعاء طريقة `setMetadata` للقيام بذلك:\n\n
+```js
+tracker.setMetadata('plan', 'free'); // after tracker.start()
+```
+", '\n\n### مع قطعة جافا سكريبت\n\nبالأسفل هو مثال على كيفية إدخال البيانات الوصفية (في هذا المثال `plan`) باستخدام القطعة. لاحظ المتغير / السطر `startOpts` الذي تمت إضافته، كما تغير المعلمات في السطر الثاني.\n\n
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: getUserID(), metadata: { plan: getPlan()} } // use startOpts variable to inject metadata
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})(0, "GxPpaDARdn2345fgt321", "//static.openreplay.com/3.5.0/openreplay.js",1,29);
+</script>
+```
+', "\n\nإذا لم يكن ذلك ممكنًا (البيانات الوصفية معروفة في وقت لاحق في تدفق التنقل، لذلك بعد بدء المتعقب)، فبدلاً من ذلك استدعاء طريقة `setMetadata` لتحديد المستخدمين الخاصين بك. يمكن تغيير هوية المستخدم في أي وقت خلال الجلسة عن طريق استدعاء `setMetadata`. ومع ذلك، سيحافظ OpenReplay على آخر معرف المستخدم الذي تم إدخاله.\n\n
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: "" };
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay.js", 1, 0, initOpts, startOpts);
+</script>
+  ...
+  OpenReplay.setMetadata("plan", "free"); // set metadata later in your code
+  ...
+```
+"]

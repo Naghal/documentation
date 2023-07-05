@@ -1,0 +1,191 @@
+---
+العنوان: "استخدام الملحق Redux لالتقاط تغييرات الحالة"
+metaTitle: "استخدام الملحق Redux لالتقاط تغييرات الحالة"
+metaDescription: "تعلم كيفية التقاط تغييرات الحالة باستخدام الملحق Redux والتجسيد لها في إعادات الجلسة"
+---
+استيراد Aside من '~/components/Aside.astro'
+استيراد YoutubeVideo من '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="مشاهدة كيفية تتبع الحالة مع Redux"
+  description="إذا لم ترغب في القراءة، يمكنك اتباع هذا الفيديو التعليمي الذي يوضح لك كيفية تتبع حالة تطبيقات React الخاصة بك عند استخدام Redux"
+  videoURL="https://www.youtube.com/watch?v=vSg4_i-jCj0"
+  />
+
+إذا كنت بحاجة إلى الإبصار الإضافي عند إعادة تشغيل جلسات المستخدمين، فإن الحصول على لمحة على حالة التطبيق يمكن أن يكون مفيدا جدا.
+
+في حالة Redux، يوفر OpenReplay [الملحق](https://docs.openreplay.com/plugins/redux) الذي يسمح لك بالتكامل في عمليات المخزن. هذا الملحق سيتيح لك رؤية الحالة (لا تحديد المفرد!) من مخزن Redux والإجراءات المرسلة خلال الجلسة المسجلة.
+
+بمجرد الإعداد، يجب أن تتمكن من مشاهدة التغييرات في المخزن كما يلي:
+
+![النتيجة المتوقعة](images/redux-outcome.png)
+
+## إعداد المخزن Redux في مشروع Next.js
+
+لهذا الدليل، سنستخدم [هذا المستودع](https://github.com/deleteman/nextjs-commerce-example/tree/redux-store) (الفرع **redux-store**) لموقع التجارة العام المبني باستخدام Next.js.
+
+في هذا المشروع، سنقوم باستبدال مجموعة من المنتجات المميزة بمجموعة جديدة مأخوذة من واجهة برمجة التطبيقات الخارجية.
+
+لذلك، سنضيف وظيفة لطلب المنتجات باستخدام Axios، وسنفعل ذلك من داخل إجراء Redux.
+
+**ملاحظة:** هذا هو تطبيق Next.js معقد، لذلك قد لا يتبع البنية القياسية الموجودة داخل تطبيقات To-Do القياسية، ولكن متابعة هذا الدليل يجب أن تتمكن من الاتباع مع التغييرات.
+
+**تذكر:** يمكنك دائما نسخ المستودع ومراجعة الكود بنفسك.
+
+سنبدأ بتثبيت جميع المستندات الرئيسية ب:
+
+
+```bash
+npm i next-redux-wrapper redux react-redux redux-thunk redux-devtools-extension
+```
+
+
+بعد ذلك، قم بإنشاء مجلد باسم "store" في مجلد المشروع الجذري وإعادة تكرار البنية التالية:
+
+![بنية المجلد](images/folder-structure.png)
+
+ستحتوي ملف `types.js` على تعريف النوع للإجراءين الذين سنقوم بتعريفهما:
+
+
+```bash
+export const GET_PRODUCTS = 'GET_PRODUCTS'
+export const PRODUCTS_ERROR = 'PRODUCTS_ERROR'
+```
+
+
+سيصدر ملف `store.js` وظيفة تخلق مخزن Redux جديد عندما يتم استدعاؤها. وهذا لأننا سنحتاج إلى إضافة وسائط Redux الوسيطة التي تُعيدها الملحق Redux (المزيد عن ذلك في اللحظة).
+
+
+```jsx
+import { createStore, applyMiddleware } from 'redux'
+import thunk from 'redux-thunk'
+import { composeWithDevTools } from 'redux-devtools-extension'
+
+import rootReducer from './reducers'
+
+const initalState = {}
+
+export default function createReduxStore(extraMiddleware = []) {
+  const middleware = [thunk, ...extraMiddleware]
+
+  const store = createStore(
+    rootReducer,
+    initalState,
+    composeWithDevTools(applyMiddleware(...middleware))
+  )
+  return store
+}
+```
+
+
+سيحدث ملف المحدث (`makeUpReducer.js`) الحالة مع قائمة المنتجات أو رسالة الخطأ التي تُعيدها عند وجود مشكلة.
+
+
+```jsx
+import { GET_PRODUCTS, PRODUCTS_ERROR } from '../types'
+
+const initialState = {
+  makeUpProducts: [],
+  loading: true,
+}
+
+export default function (state = initialState, action) {
+  switch (action.type) {
+    case GET_PRODUCTS:
+      return {
+        ...state,
+        makeUpProducts: action.payload,
+        loading: false,
+      }
+    case PRODUCTS_ERROR:
+      return {
+        loading: false,
+        error: action.payload,
+      }
+    default:
+      return state
+  }
+}
+```
+
+
+وأخيرا، سيحدد ملف الإجراء وظيفة واحدة، وهي التي تقوم بسحب قائمة المنتجات من واجهة برمجة التطبيقات الخارجية وتشغيل الإجراء الصحيح والحزمة:
+
+
+```jsx
+import { GET_PRODUCTS, PRODUCTS_ERROR } from '../types'
+import axios from 'axios'
+import slugify from 'slugify'
+
+export const getMakeUpProducts = () => async (dispatch: any) => {
+  console.log('Getting the makeup products')
+
+  try {
+    let { data } = await axios.get(
+      'https://makeup-api.herokuapp.com/api/v1/products.json?brand=maybelline&apiKey=123fff132'
+    )
+    const products = data
+
+    let newProds = products.map((p: any) => {
+      return {
+        id: '' + p.id,
+        slug: slugify(p.name),
+        name: p.name,
+        description: '',
+        images: [{ url: p.image_link }],
+        variants: [],
+        price: {
+          value: +p.price,
+        },
+        options: [],
+      }
+    })
+
+    dispatch({
+      type: GET_PRODUCTS,
+      payload: newProds,
+    })
+  } catch (e) {
+    dispatch({
+      type: PRODUCTS_ERROR,
+      payload: e,
+    })
+  }
+}
+```
+
+
+## إعد
+```jsx
+//...more imports here....
+import TrackerProvider from '../context/trackerProvider'
+import trackerRedux from '@openreplay/tracker-redux'
+
+// ... more code here....
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  const Layout = (Component as any).Layout || Noop
+
+  useEffect(() => {
+    document.body.classList?.remove('loading')
+  }, [])
+
+  let plugins = [
+    {
+      fn: trackerRedux,
+      name: 'redux',
+      config: {},
+    },
+  ]
+
+  return (
+    <TrackerProvider config={{ plugins }}>
+      <Head />
+      <ManagedUIContext>
+        <Layout pageProps={pageProps}>
+          <Component {...pageProps} />
+        </Layout>
+      </ManagedUIContext>
+    </TrackerProvider>
+  )
+}
+```

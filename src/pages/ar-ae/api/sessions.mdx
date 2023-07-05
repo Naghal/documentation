@@ -1,0 +1,86 @@
+---
+العنوان: "الجلسات"
+metaTitle: "الجلسات"
+metaDescription: "كيفية استرداد جميع الجلسات لمستخدم معين."
+---
+
+## استرداد جلسات المستخدم
+
+يقوم بإرجاع قائمة الجلسات لمستخدم معين، الذي تم التعرف عليه عبر وظيفة JavaScript `tracker.setUserID`.
+
+### الطريقة
+`GET`
+
+### الرابط
+`/api/v1/:projectKey/users/:userId/sessions`
+
+### المعلمات
+
+| الاسم | النوع | الوصف |
+|----------|-------------|-------------|
+| projectKey | string | مُعرف المشروع الذي تتبعه (مطلوب) |
+| userId | string | مُعرف المستخدم، الذي تم تعيينه عبر `tracker.setUserID` (مطلوب) |
+| start_date | epoch (ms) | تاريخ البدء من أجل تصفية الجلسات |
+| end_date | epoch (ms) | تاريخ الانتهاء حتى تصفية الجلسات |
+
+### رؤوس الطلب
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.
+
+### أكواد الحالة
+
+`200`: الاستجابة المرسلة كبيان JSON في الجسم
+
+### طلب سمحة
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/users/mickael@openreplay.com/sessions \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### استجابة سمحة
+
+
+```json
+{
+  "data": [
+    {
+      "projectId": 1,
+      "sessionId": "4813018042986240",
+      "userUuid": "15bd70f6-aedf-4544-8ae6-57eb66398e94",
+      "userId": "mickael@openreplay.com",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
+      "userOs": "Mac OS X",
+      "userBrowser": "Chrome",
+      "userDevice": "",
+      "userCountry": "IN",
+      "startTs": 1623440822825,
+      "duration": 12779,
+      "eventsCount": 1,
+      "pagesCount": 1,
+      "errorsCount": 0
+    },
+    {
+      "projectId": 1,
+      "sessionId": "4813023023591169",
+      "userUuid": "15bd70f6-aedf-4544-8ae6-57eb66398e94",
+      "userId": "mickael@openreplay.com",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
+      "userOs": "Mac OS X",
+      "userBrowser": "Chrome",
+      "userDevice": "",
+      "userCountry": "IN",
+      "startTs": 1623440902620,
+      "duration": 18226,
+      "eventsCount": 6,
+      "pagesCount": 5,
+      "errorsCount": 0
+    }
+  ]
+}
+```
+

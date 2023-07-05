@@ -1,0 +1,83 @@
+العنوان: "NgRx"
+العنوان الوصفي: "NgRx"
+وصف الميتا: "المكون الإضافي NgRx لـ OpenReplay."
+---
+
+يتيح لك هذا المكون الإضافي التقاط إجراءات / حالة NgRx وفحصها لاحقًا أثناء إعادة تشغيل تسجيلات الجلسات. هذا مفيد جدًا لفهم وإصلاح المشاكل.
+
+## التثبيت
+
+
+```bash
+npm i @openreplay/tracker-ngrx --save
+```
+
+
+## الاستخدام
+
+أضف المصدر الخارجي المولد إلى "الاستيرادات" الخاصة بك. انظر إلى [وثائق NgRx](https://ngrx.io/guide/store/metareducers) لمزيد من التفاصيل.
+
+## إذا كان موقع الويب الخاص بك هو تطبيق واحد صفحة (SPA)
+
+
+```js
+import { StoreModule } from '@ngrx/store';
+import OpenReplay from '@openreplay/tracker';
+import trackerNgRx from '@openreplay/tracker-ngrx';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+const metaReducers = [tracker.use(trackerNgRx(<options>))]; // check list of available options below
+
+tracker.start();
+
+//...
+@NgModule({
+  imports: [StoreModule.forRoot({}, { metaReducers })]
+})
+export class AppModule {}
+```
+
+
+### إذا كانت تطبيق الويب الخاص بك معروض على الخادم (SSR)
+
+اتبع المثال أدناه إذا كان التطبيق الخاص بك هو SSR. تأكد من أن "tracker.start()" يتم استدعاؤه مرة واحدة بعد بدء التطبيق (في "useEffect" أو "componentDidMount").
+
+
+```js
+import { StoreModule } from '@ngrx/store';
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerNgRx from '@openreplay/tracker-ngrx/cjs';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+const metaReducers = [tracker.use(trackerNgRx(<options>))]; // check list of available options below
+//...
+  @NgModule({
+    imports: [StoreModule.forRoot({}, { metaReducers })]
+  })
+  export class AppModule {}
+}
+
+```
+
+
+## الخيارات
+
+يمكنك تخصيص سلوك الوسيط لتنظيف البيانات الخاصة بك.
+
+
+```js
+trackerNgRx({
+  actionFilter: action => action.type !== 'DRAW', // only actions which pass this test will be recorded
+  actionTransformer: action => action.type === 'LOGIN' ? null : action,
+  actionType: action => action.type // action type for search, that's the default one
+  stateTransformer: state => {
+    const { jwt, ..._state } = state;
+    return _state;
+  },
+})
+```
+

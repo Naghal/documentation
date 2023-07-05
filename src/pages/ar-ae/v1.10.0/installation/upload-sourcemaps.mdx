@@ -1,0 +1,45 @@
+---
+العنوان: "تحميل خرائط المصدر"
+metaTitle: "تحميل خرائط المصدر"
+metaDescription: "قم بتحميل خرائط المصدر إلى OpenReplay."
+---
+
+يدعم OpenReplay عدم التصغير التلقائي لجافا سكريبت من خلال خرائط المصدر. بتحميلها إلى OpenReplay، ستتمكن من رؤية سياق الشفرة المصدرية الحصل من أسطر التسلسل في شكله الأصلي، مما يكون مفيدًا جدًا لتصحيح الشفرة المصغرة (UglifyJS) أو الشفرة المترجمة (TypeScript، ES6).
+
+## الإعداد
+
+قم بتثبيت وحدة NPM sourcemap-uploader:
+
+
+```bash
+npm i -g @openreplay/sourcemap-uploader
+```
+
+
+## المتطلبات الأساسية
+
+تأكد من أن بناءك ينتج ملفات خرائط المصدر منفصلة (.map). على سبيل المثال، إذا كنت على webpack، فيجب أن يتضمن خيار devtool التالي:
+
+
+```js
+{ devtool: ‘source-map’ }
+```
+
+
+## تحميل خرائط المصدر إلى OpenReplay
+
+بعد ذلك، تحتاج إلى إعداد عملية البناء لإنشاء الملفات المختلفة. يمكن تحميل خرائط المصدر لملف **واحد**:
+
+
+```bash
+sourcemap-uploader -s https://openreplay.mycompany.com/api -k API_KEY -p PROJECT_KEY file -m ./dist/index.js.map -u https://myapp.com/index.js
+```
+
+
+أو **دليل** يحتوي على العديد من الملفات. في هذه الحالة، يجب أن يتطابق العنوان الموجه (المسار الدقيق) مع الجذر الذي تقوم بتحميل ملفات JS من الدليل. بإختصار، إذا كان لديك ملف `app-42.js` مع `app-42.js.map` في المجلد `./build` ثم تريد تحميله إلى نسخة OpenReplay الخاصة بك بحيث يمكن الوصول إليها من خلال الرابط `https://myapp.com/static/app-42.js`، فيجب أن يكون الأمر مثل:
+
+
+```bash
+sourcemap-uploader -s https://openreplay.mycompany.com/api -k API_KEY -p PROJECT_KEY dir -m ./build -u https://myapp.com/static
+```
+

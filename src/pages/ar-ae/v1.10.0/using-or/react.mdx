@@ -1,0 +1,31 @@
+عنوان: "استخدام OpenReplay مع React"
+metaTitle: "إضافة محلل OpenReplay إلى تطبيق React الخاص بك"
+metaDescription: "تعلم كيفية الحصول على المحلل الذي يعمل في تطبيق React الخاص بك"
+---
+استيراد GoDeeperFooter من '~/components/go-deeper-footer.astro'
+استيراد Aside من '~/components/Aside.astro'
+
+الحصول على المحلل للعمل على تطبيق React بسيط جدا.
+
+## إضافة شفرة التتبع
+
+بينما يمكنك الحصول على نسخة للنسخ واللصق من الشفرة مباشرة من المنصة عند إنشاء مشروع جديد ( /using-or/snippet#getting-the-snippet )، فإن هذه الشفرة قصيرة جدا وستجعل من الصعب تخصيصها وإضافة الإضافات الإضافية.
+
+مع الأخذ بأنك تقوم ببناء تطبيق SPA (Single Page Application)، فإن كل ما عليك القيام به هو إضافة الشفرة التالية إلى نقطة الدخول الخاصة بك:
+```jsx
+import Tracker from '@openreplay/tracker';
+
+const tracker = new Tracker({
+  projectKey: "<your project key>",  
+});
+
+function YourMainComponent({props}) {
+    //some code here...
+
+    useEffect(() => {
+        tracker.start();
+    }, [])
+
+    return //....
+}
+```

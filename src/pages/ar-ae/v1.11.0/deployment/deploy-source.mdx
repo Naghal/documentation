@@ -1,0 +1,124 @@
+---
+العنوان: "النشر من المصدر"
+metaTitle: "النشر من المصدر"
+metaDescription: "دليل خطوة بخطوة لنشر OpenReplay من الشفرة المصدرية."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+يمكن نشر OpenReplay من المصدر. تحتاج إلى بناء عناصره الرئيسية (الخلفية وواجهة التطبيقات والواجهة الأمامية) ونقلها إلى مستودع الحاويات الخاص بك قبل القيام بالتثبيت.
+
+المواصفات الأدنى للجهاز الذي يعمل على OpenReplay هي `2 معالجات من نوع vCPU، 8 جيجابايت من الذاكرة، 50 جيجابايت من التخزين`، وإلا لن تبدأ خدمات OpenReplay الخلفية بسهولة. هذا ينبغي أن يكون كافيًا لحجم منخفض / معتدل. إذا كنت تتوقع حركة عالية، يجب عليك التزامن من هنا.
+
+## 1. المتطلبات الأساسية
+
+1. تثبيت دوكر:
+
+
+```bash
+sudo apt update
+sudo apt install docker.io -y
+user=`whoami`
+sudo chown $user /var/run/docker.sock
+```
+
+
+2. استنساخ مشروع OpenReplay:
+
+
+```bash
+git clone https://github.com/openreplay/openreplay
+```
+
+
+## 2. بناء خدمات الخلفية
+
+1. سجل الدخول إلى مستودع الحاويات الخاص بك باستخدام `docker login <registry_url>`. إذا كان لديك حساب في Docker Hub، فقم بتشغيل `docker login` فقط.
+
+2. قم ببناء العناصر الخلفية ثم نقلها إلى مستودع الحاويات الخاص بك:
+
+
+```bash
+cd openreplay/backend
+sudo IMAGE_TAG=<my_tag_number> PUSH_IMAGE=1 DOCKER_REPO=index.docker.io/<username> bash build.sh 
+```
+
+
+*ملاحظة* أن اسم العلامة يمكن أن يكون أي نص تريده، وسيتم إنشاؤه في مستودع Docker الخاص بك وسيتم استخدامه لتحديد هذه الإصدارة الخاصة من الشفرة (مفيدة إذا كنت تعدل أيضًا الشفرة).
+
+إذا كان كل شيء يجري بشكل صحيح، فيمكنك الحصول على قائمة بالصور التي تم بناؤها من الشفرة التي كان لديك، جاهزة للتثبيت.
+
+قائمة الصور هي:
+
+- التخزين
+- الحفرة
+- التكاملات
+- HTTP
+- التحليلات
+- Ender
+- قاعدة البيانات
+- الأصول
+- التنبيهات
+- Chalice
+
+## 3. تحديث الصور
+
+1. إنشاء سرية مستودع الحاويات الخاص بك:
+
+
+```bash
+kubectl create secret -n app docker-registry my-registry-secret \
+        --docker-server=MY_CONTAINER_REGISTRY_URL \ # not required if docker hub
+        --docker-username=MY_CONTAINER_REGISTRY_USERNAME \
+        --docker-password=MY_CONTAINER_REGISTRY_PASSWORD \
+        --docker-email=no@email.local 
+```
+
+
+2. لاستخدام العناصر التي قمت ببنائها ونقلها إلى مستودع الحاويات الخاص بك، قم بتحديث ملف `vars.yaml` الموجود في مجلد `openreplay/scripts/helmcharts`.
+
+قم فقط بإضافة قسم لكل صورة لديك في مستودع Docker مع المعلومات التالية:
+
+- `المستودع`: يجب أن يشير إلى MY_CONTAINER_REGISTRY_URL/COMPONENT_NAME (إذا كنت تستخدم Docker Hub، استخدم التنسيق `<اسم المستخدم>/<اسم العنصر>` بدلاً من ذلك)
+- `pullPolicy`: ضبط على "دائما"
+- `العلامة`: قيمة IMAGE_TAG التي تم استخدامها عند بناء الخلفية وواجهة التطبيقات
+- `imagePullSecrets`: سرية مستودع الحاويات
+
+ملاحظة أن أي صورة لم تشير إليها في ملف `vars.yaml` سيتم تثبيتها وتثبيتها من **المستودع الرسمي** لـ OpenReplay، مما يعني أنك لن تحصل على الإصدار الذي تم بناؤه من الشفرة الخاصة بك.
+
+بالأسفل هو عينة لخدمة `التنبيهات`:
+
+
+```yaml
+alerts:
+  image:
+    repository: rg.fr-par.scw.cloud/foss/alerts
+    pullPolicy: Always
+    tag: "v1.4.2"
+  imagePullSecrets: 
+    - name: my-registry-secret
+```
+
+
+### تثبيت OpenReplay
+
+1. افتح ملف `vars.yaml` ثم حرر:
+- `domainName`: هذا هو المكان الذي سيكون متاحًا لـ OpenReplay (أي openreplay.mycompany.com)
+
+2. ثبت OpenReplay:
+
+
+```bash
+cd openreplay/scripts/helmcharts
+helm upgrade --install databases ./databases -n db --create-namespace --wait -f ./vars.yaml --atomic
+helm upgrade --install openreplay ./openreplay -n app --create-namespace --wait -f ./vars.yaml --atomic
+```
+
+
+إذا
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```

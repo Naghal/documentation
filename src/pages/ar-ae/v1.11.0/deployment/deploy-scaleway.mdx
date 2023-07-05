@@ -1,0 +1,22 @@
+['---\ntitle: "نشر على Scaleway"\nmetaTitle: "نشر على Scaleway"\nmetaDescription: "دليل خطوة بخطوة لنشر OpenReplay على Scaleway Elements."\nlayout: ~/layouts/MainLayout.astro\ni18nReady: true\n---\n\nيمكن تثبيت مجموعة OpenReplay على نموذج واحد وScaleway Elements هو المرشح المثالي. هذا هو كيفية القيام بذلك.\n\n## إطلاق النموذج\n\n1. انتقل إلى لوحة معلومات Scaleway\n2. انتقل إلى "Compute > Instances" ثم انقر فوق "إنشاء نموذج"\n3. اختر منطقة التوفر المفضلة لديك\n4. اختر صورة. لهذا الدليل ، سنستخدم *Ubuntu Server 20.04 Focal Fossa*\n5. اختر نوع النموذج الخاص بك. المواصفات الأدنى هي `2 vCPUs ، 8 GB RAM ، 50 GB التخزين` ، وإلا لن يبدأ خدمات الخلفية OpenReplay بسهولة. لذلك ، نوصي ب**على الأقل** `DEV1-L` (أو ما يعادله) ، والذي يكفي لحجم منخفض / متوسط. إذا كنت تتوقع حركة عالية ، يجب عليك التحجيم من هنا.\n6. إضافة الأقراص المدمجة: ضبط الحجم على 50 GB على الأقل (إما التخزين المحلي أو التخزين الكتلي)\n7. أعط دورة التدريب الخاصة بك اسما جميلا (على سبيل المثال openreplay)\n8. مفاتيح SSH: تأكد من أن لديك مفتاح مرتبط بالفعل مع مشروعك حتى تتمكن من الاتصال بالنموذج الخاص بك\n9. انقر فوق "إنشاء نموذج جديد"\n\n> **ملاحظة:** من المحظور بشكل افتراضي من قبل Scaleway منافذ SMTP (25 ، 465 ، 587). لن يتمكن النموذج OpenReplay من إرسال الرسائل الإلكترونية إلا إذا قمت بتمكين SMTP من تكوين مجموعة الأمان الخاصة بك. للقيام بذلك ، تحقق من هذا الدليل السريع [quick tutorial](https://www.scaleway.com/en/faq/why-can-i-not-send-any-email/).\n\n## نشر OpenReplay\n\n1. تأكد من أن النموذج هو `Started` ثم اتصل به:\n\n
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem #! wherever you've saved the SSH key
+INSTANCE_IP=REPLACE_WITH_INSTANCE_PUBLIC_IP
+chmod 400 $SSH_KEY
+ssh -i $SSH_KEY root@$INSTANCE_IP
+```
+', '\n\n2. قم بتثبيت OpenReplay عن طريق توفير النطاق الذي سيتم تشغيله عليه (على سبيل المثال DOMAIN_NAME = openreplay.mycompany.com):\n\n
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+', '\n\n## تكوين TLS / SSL\n\nيتعامل OpenReplay مع بيانات المستخدمين الحساسة وبالتالي يتطلب HTTPS للتشغيل. هذا إلزامي ، وإلا لن يبدأ المتعقب بتسجيل بسهولة. نفس الشيء للمشغل ، دون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.\n\nيجب عليك لذلك إحضار (أو إنشاء) شهادة SSL الخاصة بك.\n\n1. أولا ، انتقل إلى "الشبكة" > "DNS" (أو مزود خدمة DNS الآخر) وإنشاء سجل "A". استخدم النطاق الذي سبق أن توفرته أثناء خطوة التثبيت واقترحه إلى النموذج باستخدام عنوان IP العام الخاص به (يمكن العثور عليه في "Compute" > "Instances").\n\n2. إذا كنت تحضر شهادة SSL الخاصة بك ، فأنشئ سرية SSL باستخدام الأمر التالي: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.\n\n> **ملاحظة:** إذا لم يكن لديك شهادة ، فأنشئ واحدة تلقائية تجديدها للنطاق الفرعي (الذي تم توفيره أثن
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```

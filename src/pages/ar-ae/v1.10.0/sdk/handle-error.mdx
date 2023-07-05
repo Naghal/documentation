@@ -1,0 +1,18 @@
+---
+العنوان: "JavaScript SDK - دالة handleError"
+metaTitle: "JavaScript SDK - دالة handleError"
+metaDescription: "تفاصيل حول دالة handleError من SDK OpenReplay"
+---
+
+إذا لم يكن المعلومات الافتراضية التي يتعقبها متعقبنا عند وقوع خطأ JS كافية، يمكنك استخدام هذه الدالة.
+
+تستخدم دالة `handleError` لإبلاغ عن الاستثناءات الملاحظة، والوعود المرفوضة أو الأحداث الخاطئة يدويًا.
+
+انظر [تقارير الأخطاء](/installation/error-reporting#manuallyloggingexceptions) لمزيد من التفاصيل.
+
+## التوقيع
+
+```js 
+handleError: (e: Error | ErrorEvent | PromiseRejectionEvent, metadata?: Record<string, any>) => void
+```
+

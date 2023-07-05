@@ -1,0 +1,115 @@
+---
+العنوان: "المستخدمون"
+metaTitle: "المستخدمون"
+metaDescription: "كيفية إدارة وتحكم في بيانات المستخدم."
+---
+
+## الحصول على إحصائيات المستخدم
+
+الحصول على بعض الإحصائيات العليا والتفاصيل حول مستخدم معين، الذي تم التعرف عليه عبر وظيفة JavaScript `tracker.setUserID`. يقوم هذا النقطة النهائية بإرجاع أشياء مثل `firstSeen`، `lastSeen` و `numberSessions`.
+
+### الطريقة
+`GET`
+
+### الرابط
+`/api/v1/:projectKey/users/:userId`
+
+### المعلمات
+
+| الاسم | النوع | الوصف |
+|----------|-------------|-------------|
+| projectKey | string | معرف المشروع الذي تتبعه (مطلوب) |
+| userId | string | معرف المستخدم الخاص بك، الذي يتم تعيينه عبر `tracker.setUserID` (مطلوب) |
+
+### رؤوس الطلب
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.
+
+### أكواد الحالة
+
+`200`: تم إرسال الاستجابة كجيسون في الجسم
+
+### طلب مثال
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/users/mickael@openreplay.com \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "userId": "mickael@openreplay.com",
+    "sessionCount": 3,
+    "lastSeen": 1623689478617,
+    "firstSeen": 1623440822825
+  }
+}
+```
+
+
+## حذف المستخدم
+
+حذف مستخدم (الذي تم التعرف عليه عبر وظيفة JavaScript `tracker.setUserID`) وجميع بياناته التي تم تحصيلها بواسطة OpenReplay. يشغل هذا الاستدعاء عملية خلفية (cron) لإزالة جميع بيانات المستخدم، بما في ذلك الجلسات، الأحداث، البيانات الوصفية، الأحداث المخصصة والتسجيلات. يقوم الاستدعاء بإرجاع `jobID` يمكنك استخدامه لاحقًا للتحقق [من](/api/jobs#getjobdetails) حالة العملية الحذف.
+
+هذا يأتي في الوقت المناسب لمعالجة طلبات GDPR التي قد تتلقاها من المستخدمين النهائيين.
+
+### الطريقة
+`DELETE`
+
+### الرابط
+`/api/v1/:projectKey/users/:userId`
+
+### المعلمات
+
+| الاسم | النوع | الوصف |
+|----------|-------------|-------------|
+| projectKey | string | معرف المشروع الذي تتبعه (مطلوب) |
+| userId | string | معرف المستخدم الخاص بك، الذي يتم تعيينه عبر `tracker.setUserID` (مطلوب) |
+
+### رؤوس الطلب
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.
+
+### أكواد الحالة
+
+`200`: تم إرسال الاستجابة كجيسون في الجسم
+
+### طلب مثال
+
+
+```shell
+curl -X DELETE \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/users/mickael@example.com \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "jobId": 22345,
+    "description": "Delete user sessions of userId = mickael@example.com",
+    "status": "scheduled",
+    "projectId": 1,
+    "action": "delete_user_data",
+    "referenceId": "mehdi@openreplay.com",
+    "createdAt": 1623912962910,
+    "updatedAt": 1623912962910,
+    "startAt": 1623954600000,
+    "errors": null
+  }
+}
+```
+

@@ -1,0 +1,41 @@
+---
+عنوان: "استخدام OpenReplay مع Gatsby"
+metaTitle: "إضافة محلل OpenReplay إلى تطبيق Gatsby الخاص بك"
+metaDescription: "تعلم كيفية الحصول على المحلل يعمل في تطبيق Gatsby الخاص بك"
+---
+استيراد GoDeeperFooter من '~/components/go-deeper-footer.astro'
+
+كان تثبيت محلل OpenReplay في مشروع مبني على Gatsby بسيطا جدا.
+
+![Sesion replay of a Gatsby site](images/gatsby-ss.png)
+
+بالنظر إلى أن Gatsby يستخدم React تحت السطح، فكل ما نحتاج إليه هو إضافة شفرة المحلل داخل الصفحة الرئيسية واستدعاء دالة البدء باستخدام العنصر الخاص بالكيبورد المسمى "useEffect".
+
+دعونا ننظر إليه.
+
+## لماذا تضبط المحلل في موقع ثابت؟
+
+عدم وجود المحتوى الديناميكي داخل تطبيقك لا يعني أنك لا تريد الاستفادة من بعض الميزات الأخرى لـ OpenReplay.
+
+بينما لن تستخدم تشغيلات الجلسات للعثور على الأخطاء، فإنك ستكون قادراً على التقاط المعلومات المثيرة للاهتمام وإنشاء [لوحات القياس الخاصة بك](https://docs.openreplay.com/tutorials/custom-dashboard) حول هذه المعلومات.
+
+يمكنك استخدام الأداء والمعلومات الأساسية للويب وحتى المعلومات المتعلقة بالموارد للحصول على فكرة عامة حول ما يكون تجربة مستخدمي الموقع معه.
+
+## ضبط المحلل داخل Gatsby
+
+بالنظر إلى موقع Gatsby الثابت ونقطة الدخول له يكون الملف `index.tsx` داخل مجلد `pages`، فإنك سترغب في إضافة الشفرة التالية إليه:
+```jsx
+import Tracker from '@openreplay/tracker';
+const tracker = new Tracker({
+  projectKey: process.env.GATSBY_OPENREPLAY_PROJECT_KEY
+});
+
+const Index = ({data, location }) => {
+
+  React.useEffect(() => {
+    tracker.start();
+  }, [])
+
+   //the rest of your code here...
+}
+```

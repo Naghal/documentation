@@ -1,0 +1,80 @@
+---
+العنوان: "النشر إلى Kubernetes"
+metaTitle: "النشر إلى Kubernetes"
+metaDescription: "دليل خطوة بخطوة للنشر OpenReplay على Kubernetes."
+---
+
+النشر في OpenReplay يستند إلى [Helm Charts] (https://helm.sh) الذي يجعله متوافقًا تمامًا مع Kubernetes. نحن نحزم PostgreSQL و Redis التي تحتاجها OpenReplay. هذا هو كيفية القيام بذلك.
+
+## المتطلبات الأساسية
+
+النشر في OpenReplay على Kubernetes يحتاج إلى:
+- Kubernetes **v1.18 +**
+- helm **3.10 +**
+- **RWX PVC** (للمكونات المشتركة ، إذا كان السلسلة أكثر من عقدة واحدة). تأكد من إلغاء الشرط أدناه في `/var/lib/openreplay/vars.yaml` وتحديث اسم PVC لمكونات **sink** و **storage** و **chalice**:
+
+
+```yaml
+# In case of multiple nodes in the kubernetes cluster,
+# You'll have to create an RWX PVC for shared components.
+# If it's a single node, we'll use hostVolume, which is the default for the community/oss edition.
+pvcRWXName: "hostPath"
+```
+
+
+OpenReplay يتطلب أيضًا `2 vCPUs ، 8 GB من الذاكرة ، 50 GB من التخزين` للعمل بشكل صحيح ، وإلا لن تبدأ خدمات الخلفية OpenReplay. هذه المواصفات كافية لحجم معتدل ، ولكن إذا كنت تتوقع حركة عالية ، يجب عليك التحجيم من هنا.
+
+تم اختبار النشر على المنصات أدناه:
+- سلسلة Kube وحيدة المحلية
+- محرك Kubernetes Google (GKE)
+- خدمة Kubernetes Amazon Elastic (EKS)
+- خدمة Kubernetes Microsoft Azure (AKS)
+- Scaleway Elements Kubernetes (Kapsule)
+
+## نشر OpenReplay
+
+الاتصال بسلسلتك ونسخ مستودع OpenReplay:
+
+
+```bash
+git clone https://github.com/openreplay/openreplay.git
+cd openreplay/scripts/helmcharts
+```
+
+
+> إذا كان هناك عقد عدة في سلسلة Kubernetes ،
+عليك إنشاء RWX (على سبيل المثال efs ، في حالة AWS) PVC لتبادل البيانات بين الحاويات.
+إذا كانت واحدة العقد ، سنستخدم hostVolume ، وهو الافتراضي للتثبيت المجتمعي.
+
+ثم ، فتح ملف `vars.yaml` بأمر `vim vars.yaml` ثم استبدال:
+- `domainName`: هذا هو المكان الذي سيكون متاحًا OpenReplay (أي openreplay.mycompany.com)
+- `postgresqlPassword`: كلمة مرور Postgres (قم بضبطها أو بإنشاء كلمة مرور عشوائية)
+- `accessKey`: مطلوب لخدمة التخزين الأبعادي (استخدم سلسلة منشأة عشوائيًا)
+- `secretKey`: مطلوب لخدمة التخزين الأبعادي (استخدم سلسلة منشأة عشوائيًا)
+- `jwt_secret`: مطلوب لواجهة برمجة التطبيقات (استخدم سلسلة منشأة عشوائيًا)
+
+تأكد من تثبيت [helm] (https://helm.sh/docs/intro/install/) ثم قم بإعداد OpenReplay:
+
+
+```bash
+cd openreplay/scripts/helmcharts
+helm upgrade --install databases ./databases -n db --create-namespace --wait -f ./vars.yaml --atomic
+helm upgrade --install openreplay ./openreplay -n app --create-namespace --wait -f ./vars.yaml --atomic
+```
+
+
+## تكوين TLS / SSL
+
+OpenReplay يتعامل مع بيانات المستخدم الحساسة وبالتالي يتطلب HTTPS للعمل. هذا إلزامي ، وإلا لن يبدأ المتعقب بتسجيل بسهولة. نفس الشيء لوحة القيادة ، بدون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.
+
+إذا كانت سلسلة Kubernetes في السحابة (مثل EKS ، AKS أو GKE) ، فأسهل طريقة للتعامل مع SSL هي إعداد توزيع الحمل السحابي وتشغيل سلسلتك وراءه. خيار آخر هو إنشاء شهادة SSL أو استخدام شهادتك الخاصة والإشارة إلى النطاق الفرعي الخاص بك (أي openreplay.mycompany.com) إلى سلسلتك. المزيد على كلا الخيارين أدناه.
+
+### إعداد توزيع الحمل السحابي (خيار 1)
+
+واحدة من مزايا تشغيل OpenReplay وراء توزيع الحمل السحابي هي إدارة الشهادة من قبل مزود السحابة. أدناه هي دليل خ
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      use-forwarded-headers: true
+```

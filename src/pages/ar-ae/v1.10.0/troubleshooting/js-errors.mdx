@@ -1,0 +1,69 @@
+---
+العنوان: "أخطاء JS"
+MetaTitle: "أخطاء JS"
+MetaDescription: "جميع أنواع الأخطاء البرمجية لجافا سكريبت."
+---
+
+يحتوي هذا القسم على أكثر الأخطاء البرمجية لجافا سكريبت التي تم الإبلاغ عنها من قبل مجتمعنا.
+
+## خطأ المرجع: المتصفح غير محدد
+
+في بعض الأحيان، يحدث هذا الخطأ عند محاولة استيراد الملحقات `tracker-assist` أو `tracker-fetch`، وهذا يحدث لأن الحزمة تحاول بناء الصفحة بدون واجهة API النافذة في البيئة.
+
+الحل هو بسيط جداً. كل ما عليك القيام به هو تغيير الاستيراد العادي للملحق المسبب للمشكلة:
+
+
+```js
+import trackerAssist from '@openreplay/tracker-assist/cjs';
+```
+
+
+لاستيراد ديناميكي داخل `componendDidMount` أو `useEffect` البديل:
+
+
+```js
+import Tracker, { Options } from "@openreplay/tracker";
+const tracker = new Tracker({ /* your options */ });
+
+class TrackerComponent extends React.Component {
+
+  componentDidMount = () => {
+    import(‘@openreplay/tracker-assist/cjs’).then(({ default: trackerAssist }) => {
+      tracker.start(/* your options */)
+      tracker.use(trackerAssist(/* your assist options */))
+    })
+   }
+
+ /* Other code */
+```
+
+
+بهذه الطريقة، سيتم استيراد جميع الملحقات التي تعتمد على واجهة API النافذة عند تقديم المكون.
+
+## التبعية الحرجة: طلب التبعية هو تعبير
+
+قد يحدث هذا مع إصدارات قديمة من الملحق `tracker-assist`. يجب عليك تطبيق هذا الحل البديل [workaround](https://github.com/peers/peerjs/issues/630#issuecomment-910028230) إذا واجهت الخطأ أدناه عند التجميع:
+
+
+```log
+Failed to compile.
+
+./node_modules/peerjs/dist/peerjs.min.js
+Critical dependency: the request of a dependency is an expression
+```
+
+
+## استثناء DOM غير مقبول: منعت نافذة مع المصدر "X" من الوصول إلى نافذة عبر المصدر
+
+يأخذ محلل OpenReplay الإطارات **من نفس المجال** بشكل افتراضي. ومع ذلك، يطرح خطأ عند محاولة التقاط إطار غير من نفس المجال مثل موقعك الإلكتروني. يمكنك إما:
+
+- تعطيل الوظيفة بأكملها باستخدام خاصية `captureIFrames` كما في المثال أدناه:
+
+
+```js
+const tracker = new OpenReplay({
+      projectKey: PROJECT_KEY,
+      captureIFrames: false
+});
+```
+

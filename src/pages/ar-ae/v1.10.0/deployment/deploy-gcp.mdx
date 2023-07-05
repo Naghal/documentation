@@ -1,0 +1,66 @@
+---
+العنوان: "النشر إلى Google Cloud"
+metaTitle: "النشر إلى Google Cloud"
+metaDescription: "دليل خطوة بخطوة لنشر OpenReplay على Google Cloud."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+استيراد YoutubeVideo من '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="مشاهدة كيفية تثبيت OpenReplay في البيئة الخاصة بك في GCP"
+  description="إذا لم ترغب في القراءة، يمكنك اتباع هذا الدرس التعليمي المرئي الذي يوضح لك كيفية تثبيت OpenReplay في GCP"
+  videoURL="https://youtu.be/t31fj-0t3Dw"
+  />
+
+يمكن تثبيت مجموعة OpenReplay على جهاز واحد وGoogle Cloud هو المرشح المثالي.
+
+## إطلاق في الوحدة الافتراضية
+
+1. انتقل إلى لوحة معلومات "Compute Engine" واختر "VM Instances" من شريط القائمة الجانبي
+2. انقر فوق "Create Instance"
+3. اختر المنطقة المفضلة لديك والمنطقة
+4. اختر نوع الجهاز. المواصفات الأدنى هي `2 vCPUs، 8 GB of RAM، 50 GB of storage`، وإلا لن تبدأ خدمات الخلفية OpenReplay بسهولة. لذلك، نوصي ب**على الأقل** `n2-standard-2` (أو ما يعادله - لاحظ أن `e2-standard-2` يعرف أن يعطي مشاكل أثناء النشر) والذي يكفي لحجم منخفض / متوسط. إذا كنت تتوقع حركة عالية، يجب عليك التحجيم من هنا.
+5. غير قرص الإقلاع إلى *Ubuntu 20.04 LTS* أو أعلى، ثم اختر *SSD persistent disk* لنوع قرص الإقلاع واضبط الحجم إلى 50 GB.
+6. تحقق من كلا "السماح بالمرور الإتصال HTTP" و"السماح بالمرور الإتصال HTTPS" في الجدار الناري
+7. انقر فوق "إنشاء"
+
+## نشر OpenReplay
+
+بمجرد تشغيل الـ`VM`، قم بالاتصال بها عن طريق الضغط على زر `SSH` ثم قم بتثبيت OpenReplay عن طريق توفير النطاق الذي سيتم تشغيله عليه (على سبيل المثال DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+git clone https://github.com/openreplay/openreplay.git
+cd openreplay/scripts/helmcharts
+DOMAIN_NAME=openreplay.mycompany.com bash init.sh
+```
+
+
+## تكوين TLS / SSL
+
+يتعامل OpenReplay مع بيانات المستخدمين الحساسة وبالتالي يتطلب HTTPS للتشغيل. هذا إلزامي، وإلا لن يبدأ المتعقب بتسجيل بسهولة. نفس الشيء للمشغل، بدون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.
+
+أسهل طريقة لمعالجة SSL في Google Cloud هي إعداد محطة تحميل (Google Load Balancing) وتشغيل OpenReplay وراءه. الخيار الآخر هو إنشاء شهادة SSL أو استخدام شهادتك الخاصة والإشارة إلى النطاق الفرعي الخاص بك (أي openreplay.mycompany.com) إلى نسخة OpenReplay. المزيد عن كلا الخيارين أدناه.
+
+### إعداد محطة تحميل Google (الخيار 1)
+
+الخطوة الأولى هي إضافة مجموعة الأجهزة التي هي مطلوبة لاحقًا لمحطة التحميل:
+
+1. انتقل إلى "Compute Engine" > "Instance Groups"
+2. "Create Instance Group" واختر *New unmanaged instance group*
+3. اختر موقعك المفضل ثم اختر الشبكة واختر نسخة OpenReplay VM
+4. انقر فوق "إنشاء"
+
+الآن هو وقت لإنشاء محطة التحميل:
+
+1. انتقل إلى "Network Services" > "Load Balancing"
+2. "Create Load Balancer" واختر *HTTP (S) Load Balancing*
+3. اختر "من الإنترنت إلى أجهزتي الفي الوحدة الافتراضية" ثم انقر فوق "متابعة"
+4. ابدأ مع "Backend configuration" وانقر فوق "Backend services" > "Create a backend service"
+5. اختر *
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      use-forwarded-headers: true
+```

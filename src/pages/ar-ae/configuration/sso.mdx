@@ -1,0 +1,53 @@
+---
+العنوان: "SSO"
+MetaTitle: "SSO"
+MetaDescription: "كيفية إعداد Single-Sign-On (SSO) عبر SAML2."
+---
+استيراد ORDynamicCode من '../../../components/Code/ORDynamicCode';
+تصدير القيم الأولية = {domain:"YOUR_DOMAIN",tenantKey:"TENANT_KEY"};
+تصدير القيم التي تتجاهل = {jumpcloud:"https://sso.jumpcloud.com"};
+
+Single-Sign-On (via SAML2) متاح فقط في OpenReplay Enterprise Edition.
+
+## تكوين مزود الهوية (IDP)
+
+في لوحة مزود الهوية الخاص بك، أنشئ تطبيقًا جديدًا باسم "openreplay" (يمكنك استخدام هذا <a href="https://docs.openreplay.com/static/OpenReplay.png" target="_blank">الأيقونة</a>، في صفحة التكوين، تأكد من ضبط القيمة التالية (يرجى التأكد من استبدال <code>{initialValues.domain}</code> بالقيمة الصحيحة، مثلاً `https://openreplay.mycompany.com`):
+
+| المتغير | القيمة |
+|----------|-------------|
+| ACS URL (also called Single Sign On URL or Consumer URL) | <code><ORDynamicCode id="domain" initialValue={initialValues.domain} client:idle/>/api/sso/saml2/acs/</code> |
+| Entity ID (also called Audience) | <code><ORDynamicCode id="domain" initialValue={initialValues.domain} client:idle/>/api/sso/saml2/metadata/</code> |
+| Single Logout URL (also called SLO URL) | <code><ORDynamicCode id="domain" initialValue={initialValues.domain} client:idle/>/api/sso/saml2/sls/</code> (اختياري) |
+| Name ID (sometimes it is configurable in the \'Attribute Statements\' or the \'Parameters\' section) | `Email` أو `EmailAddress` أو `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`، بحسب مزود الهوية الخاص بك |
+| SAML initiator | ضبطه على `Service Provider` (اختياري) |
+
+في 'Attribute Statements'، أو قسم 'Parameters'، يرجى التأكد من تعريف الحقول التالية:
+
+| الحقل | القيمة |
+|----------|-------------|
+| tenantKey | <code><ORDynamicCode id="tenantKey" initialValue={initialValues.tenantKey} client:idle/></code> قيمتها يمكن العثور عليها في لوحة التحكم، تحت 'Preferences' > 'Account' |
+| firstName | `user.firstName` |
+| lastName |  `user.lastName` |
+| internalId | Internal ID أو `user.email` (معرف المستخدم في نظام إدارة الهوية الخاص بك) (اختياري) |
+| role | دور المستخدم، بحسب مزود الهوية الخاص بك يمكن أن يكون `user.role` أو `group`، إلخ. (اختياري، الافتراضي = `member`) |
+| adminPrivileges | إذا كان للمستخدم صلاحيات مدير أو لا، إذا كان يحتوي هذا الحقل على أي قيمة مختلفة عن `false`، فسيتم اعتبارها كـ `true`. (اختياري، الافتراضي = `false`) |
+
+يجب عليك الآن الحصول على جميع القيم المطلوبة للخطوة/القسم التالي.
+
+## تكوين SSO (SAML2)
+
+لتمكين SSO، قم بتشغيل `openreplay -e` وقم بإلغاء التعليق على ثم تحديث المتغيرات البيئية التالية في قسم `chalice`:
+
+| المتغير | الوصف |
+|----------|-------------|
+| idp_entityId | `entityId` من مزود الهوية الخاص بك، يشار أيضًا إلى باسم `Issuer URL` |
+| idp_sso_url | `singleSignOnService` من مزود الهوية الخاص بك، يشار أيضًا إلى باسم `SAML 2.0 Endpoint (HTTP)` |
+| idp_x509cert | `x509cert`، يجب أن يكون سطر واحدًا، بدون فواصل سطر. يمكنك استخدام <a href="https://www.samltool.com/format_x509cert.php" title="FORMAT A X509 CERTIFICATE" target="_blank">هذه الأداة</a> لتنسيق قيمتك |
+| idp_name | اسم مزود الهوية (اختياري) |
+| idp_sls_url | `singleLogoutService` من مزود الهوية الخاص بك، يشار أيضًا إلى باسم `SLO Endpoint (HTTP)` (اختياري) |
+| enforce_SSO | إذا تم ضبطه على `true`، فإن جميع الاتصالات باستخدام اسم المستخدم وكلمة المرور سيتم حظرها (اختياري، الافتراضي = `false`) |
+
+ثم، احفظ وأن
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout openreplay-sso.key -out openreplay-sso.crt
+```

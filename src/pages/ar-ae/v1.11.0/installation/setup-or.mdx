@@ -1,0 +1,69 @@
+---
+العنوان: "إعداد OpenReplay"
+metaTitle: "إعداد OpenReplay"
+metaDescription: "كيفية إعداد OpenReplay بسرعة وبدء تسجيل الجلسات والمتغيرات."
+---
+استيراد YoutubeVideo من '~/components/YoutubeVideo.astro'
+استيراد IconText من '~/components/Card/IconText.astro'
+
+<YoutubeVideo title="مشاهدة كيفية البدء في OpenReplay"
+description="إذا لم ترغب في القراءة، يمكنك اتباع هذا الدرس التعليمي الفيديوي الذي يوضح لك كيفية البدء في OpenReplay خلال 3 دقائق أو أقل."
+videoURL="https://www.youtube.com/watch?v=EWbtMK3qK30"
+/>
+
+البدء في OpenReplay سهل.
+
+إذا كنت ترغب في مشاهدة درس تعليمي سريع للبدء، استخدم [هذا الفيديو YouTube](https://www.youtube.com/watch?v=EWbtMK3qK30)، وإلا استمر في القراءة للحصول على المزيد من التفاصيل.
+
+هناك نحوين للحصول على OpenReplay يعملان: باستخدام السكريبت أو حزمة npm.
+
+## استخدام السكريبت
+
+انسخ / لصق الكود المختصر مباشرة إلى `</head>` من تطبيق الويب الخاص بك. يمكن العثور على السكريبت في لوحة التحكم OpenReplay تحت 'التفضيلات > المشاريع' وهو فريد من نوعه لكل مشروع.
+
+إذا كان موقع الويب الخاص بك يدعم مدير علامات Google، فيمكنك اتباع [دليل GTM الخطوة بخطوة](/integrations/google-tag-manager).
+
+## استخدام NPM
+
+أولاً، قم بتثبيت حزمة npm.
+
+
+```bash
+npm i @openreplay/tracker
+```
+
+
+ثم، قم بتهيئة الحزمة من نقطة دخول الكود الخاص بك وبدء المتعقب. يجب تعيين خيار `projectKey` في المُكون الإحالي. يمكن الحصول على قيمته في لوحة التحكم OpenReplay تحت 'التفضيلات > المشاريع'.
+
+### إذا كان موقع الويب الخاص بك هو تطبيق واحد للصفحات (SPA)
+
+
+```js
+import OpenReplay from '@openreplay/tracker';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.start();
+```
+
+
+### إذا كانت تطبيق الويب الخاص بك مُنشأ من الجانب الخادم (SSR)
+
+اتبع الكود المختصر أدناه إذا كانت تطبيق الويب الخاص بك مُنشأ من الجانب الخادم (SSR) (أي NextJS، NuxtJS). تأكد من أن `tracker.start()` يتم استدعاؤه مرة واحدة عندما يتم بدء التطبيق (في `useEffect` أو `componentDidMount`).
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+//...
+const tracker = new OpenReplay({
+      projectKey: PROJECT_KEY
+});
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, []);
+}
+```
+

@@ -1,0 +1,87 @@
+['---\ntitle: "الوظائف"\nmetaTitle: "الوظائف"\nmetaDescription: "كيفية إدارة عمليات حذف البيانات للمستخدمين."\n---\n\n## قائمة جميع الوظائف\n\nاسترداد جميع الوظائف، بما في ذلك التي تم الانتهاء منها أو إلغاؤها.\n\n### الطريقة\n`GET`\n\n### الرابط\n`/api/v1/:projectKey/jobs`\n\n### رؤوس الطلب\n\n`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.\n\n### أكواد الحالة\n\n`200`: الاستجابة المرسلة بشكل JSON في الجسم\n\n### طلب مثال\n\n
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/jobs \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+', '\n\n### استجابة مثال\n\n
+```json
+{
+  "data": [
+    {
+      "jobId": 3451,
+      "description": "Delete user sessions of userId = shekar@example.com",
+      "status": "scheduled",
+      "projectId": 1,
+      "action": "delete_user_data",
+      "referenceId": "mehdi@openreplay.com",
+      "createdAt": 1623912955277,
+      "updatedAt": 1623912955277,
+      "startAt": 1623954600000,
+      "errors": null
+    },
+    {
+      "jobId": 3452,
+      "description": "Delete user sessions of userId = shekar@example.com",
+      "status": "cancelled",
+      "projectId": 1,
+      "action": "delete_user_data",
+      "referenceId": "mehdi@openreplay.com",
+      "createdAt": 1623912962910,
+      "updatedAt": 1623913015276,
+      "startAt": 1623954600000,
+      "errors": null
+    }
+  ]
+}
+```
+', "\n\n## الحصول على تفاصيل الوظيفة\n\nإرجاع حالة الوظيفة وتفاصيل أخرى مثل `createdAt`، `referenceId` و `errors`.\n\n### الطريقة\n`GET`\n\n### الرابط\n`/api/v1/:projectKey/jobs/:jobId`\n\n### المعلمات\n\n| الاسم | النوع | الوصف |\n|----------|-------------|-------------|\n| jobId | string | المعرف الذي تم الحصول عليه عن طريق استدعاء حذف المستخدم (مطلوب) |\n\n### رؤوس الطلب\n\n`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.\n\n### أكواد الحالة\n\n`200`: الاستجابة المرسلة بشكل JSON في الجسم\n\n### طلب مثال\n\n
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/jobs/3451\
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+", '\n\n### استجابة مثال\n\n
+```json
+{
+  "data": {
+    "jobId": 3451,
+    "description": "Delete user sessions of userId = shekar@example.com",
+    "status": "scheduled",
+    "projectId": 1,
+    "action": "delete_user_data",
+    "referenceId": "mehdi@openreplay.com",
+    "createdAt": 1623912955277,
+    "updatedAt": 1623912955277,
+    "startAt": 1623954600000,
+    "errors": null
+  }
+}
+```
+', "\n\n## إلغاء الوظيفة\n\nإلغاء الوظيفة إذا لم يبدأ بعد أو لا يزال قيد التقدم.\n\n### الطريقة\n`DELETE`\n\n### الرابط\n`/api/v1/:projectKey/jobs/:jobId`\n\n### المعلمات\n\n| الاسم | النوع | الوصف |\n|----------|-------------|-------------|\n| jobId | string | المعرف الذي تم الحصول عليه عن طريق استدعاء حذف المستخدم (مطلوب) |\n\n### رؤوس الطلب\n\n`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.\n\n### أكواد الحالة\n\n`200`: الاستجابة المرسلة بشكل JSON في الجسم\n`501`: تم العودة إذا لم يتمكن من إلغاء الوظيفة\n\n### طلب مثال\n\n
+```shell
+curl -X DELETE \
+  https://openreplay.example.com/api/v1/3sWXSsqHgSKnE87YkNJK/jobs/3452 \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+", '\n\n### استجابة مثال\n\n
+```json
+{
+  "data": {
+    "jobId": 3452,
+    "description": "Delete user sessions of userId = shekar@example.com",
+    "status": "cancelled",
+    "projectId": 1,
+    "action": "delete_user_data",
+    "referenceId": "mehdi@openreplay.com",
+    "createdAt": 1623912962910,
+    "updatedAt": 1623913015276,
+    "startAt": 1623954600000,
+    "errors": null
+  }
+}
+```
+']

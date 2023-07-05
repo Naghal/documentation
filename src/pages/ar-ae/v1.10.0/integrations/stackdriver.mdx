@@ -1,0 +1,55 @@
+---
+العنوان: "Stackdriver"
+MetaTitle: "التكامل مع Stackdriver"
+MetaDescription: "كيفية التكامل مع Stackdriver مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات."
+---
+
+كيفية التكامل مع Stackdriver مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات.
+
+## 1. إنشاء حساب خدمة Google Cloud
+
+1. في وحدة التحكم GCP، انتقل إلى صفحة [إنشاء مفتاح حساب الخدمة](https://console.cloud.google.com/apis/credentials/serviceaccountkey?_ga=2.65088365.-270704106.1563504222).
+2. من قائمة حساب الخدمة، اختر *New Service Account*.
+3. في حقل اسم حساب الخدمة، أدخل "openreplay-stackdriver".
+4. من القائمة الرئيسية، أضف *Logging > Logs Viewer* و *Stackdriver > Stackdriver Accounts Viewer*.
+5. انقر فوق *Create* لتحميل ملف JSON الذي يحتوي على مفتاحك.
+
+## 2. تمكين Stackdriver في OpenReplay
+
+الصق اسم `Log` و `openreplay-stackdriver` الاعتمادات في لوحة القيادة OpenReplay تحت 'التفضيلات > التكامل'.
+
+![التكامل مع Stackdriver في OpenReplay](/static/stackdriver-1.png#center)
+
+## 3. الانتشار openReplaySessionToken
+
+لربط حدث Stackdriver مع جلسة المستخدم المسجلة، يجب تدفق رمز فريد من نوعه من الواجهة الأمامية إلى الخلفية في كل طلب تريد تتبعه. يمكن القيام بذلك باستخدام رأس HTTP مخصص. في المثال أدناه، نستخدم وظيفة `fetch` لإرسال ذلك الرأس.
+
+
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // or window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```
+
+
+لأجل أن يربط OpenReplay بإدخال سجل Stackdriver مع جلسة المستخدم المسجلة، يجب تدفق رمز فريد من نوعه كعلامة إلى كل خطأ خلفي يريد تتبعه.
+
+بالأسفل هو مثال في API Python Stackdriver.
+
+
+```python
+google_logger.log_text("A LOG ENTRY", severity='ERROR', labels={"openReplaySessionToken": OPENREPLAY_SESSION_TOKEN})
+
+#or
+
+google_logger.log_struct({"message": "A LOG ENTRY"}, severity='ERROR', labels={"openReplaySessionToken": OPENREPLAY_SESSION_TOKEN})
+```
+

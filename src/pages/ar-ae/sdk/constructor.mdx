@@ -1,0 +1,100 @@
+عنوان: "JavaScript SDK - تهيئة ال SDK"
+metaTitle: "JavaScript SDK - تهيئة ال SDK"
+metaDescription: "خيارات التكوين لطريقة البناء المستعرض"
+---
+استيراد Aside من '~/components/Aside.astro'
+استيراد ORCard من '~/components/Card/ORCard.astro'
+
+## التثبيت
+
+سيقوم السطر التالي بتثبيت المستعرض ومعه ال SDK لتستفيد من جميع ميزات المستعرض.
+
+
+```bash
+npm i @openreplay/tracker
+```
+
+
+## التهيئة
+عند إنشاء مستعرض OpenReplay، يوجد عدد من الخيارات التكوين التي يمكنك توفيرها لتخصيص العديد من جوانب التسجيل وتجربة التسجيل.
+
+يجب عليك تعيين خيار `projectKey` في البناء. يمكنك الحصول على هذه القيمة من لوحة التحكم OpenReplay الخاصة بك تحت 'التفضيلات > المشاريع'.
+
+<Aside type="tip">
+  لاحظ أنه إذا كان لديك مشاريع متعددة، فيجب عليك الحذر في اختيار مفتاح المشروع.
+</Aside>
+
+### تطبيقات صفحة واحدة (SPA)
+إذا كان موقعك هو **تطبيق صفحة واحدة (SPA)**، فاستخدم الشفرة التالية:
+
+
+```js
+import OpenReplay from '@openreplay/tracker';
+//...
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.start(); // returns a promise with session info (sessionID, sessionHash, userUUID)
+```
+
+
+### التحميل الجانب الخادم (SSR)
+وإلا، إذا كانت تطبيق الويب الخاص بك **التحميل الجانب الخادم (SSR)** (أي NextJS، NuxtJS)، فاستخدم الشفرة التالية. تأكد من أن `tracker.start()` يتم استدعاؤه مرة واحدة عندما يتم بدء التطبيق (في `useEffect` أو `componentDidMount`).
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+//...
+const tracker = new OpenReplay({
+      projectKey: PROJECT_KEY,
+});
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start(); // returns a promise with session info (sessionID, sessionHash, userUUID)
+  }, [])
+}
+```
+
+
+<Aside type="tip">
+إذا كنت تستخدم مجموعة معينة من الإطارات الويب، فانظر إلى قسم [إعداد المستعرض] (/using-or) لمعرفة كيفية البدء.
+</Aside>
+
+## مثال
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+//...
+const tracker = new OpenReplay({
+      projectKey: PROJECT_KEY,
+      ingestPoint: "https://openreplay.mydomain.com/ingest", // when dealing with the self-hosted version of OpenReplay
+      capturePerformance: true,
+      __DISABLE_SECURE_MODE: true // for local testing
+});
+```
+
+
+## خيارات التهيئة
+
+هناك مجموعة من الخيارات التي يمكنك تمريرها إلى البناء. فقط `projectKey` مطلوب.
+
+### الغرض العام 
+- `projectKey: string` معرف المشروع الذي تتتبعه.
+- `sessionHash?: string` هش الجلسة الأولية. هذا مفيد عندما تتجاوز الجلسات مجالات مختلفة في موقع الويب الخاص بك وترغب في تجميعها في تسجيل واحد. في حالة عدم الإمكانية الاستمرار في الجلسة (إما أنها غير موجودة أو انتهت)، فسيبدأ المستعرض تلقائيًا جلسة جديدة. كما يتم إرجاعه على `stop()`. المزيد من التفاصيل هنا (troubleshooting/session-recordings#replaysarebrokenacrosssubdomains).
+- `ingestPoint?: string` نطاق OpenReplay الخاص بك (أي https://openreplay.mydomain.com/ingest)، الذي سيرسل المستعرض إليه الأحداث. هذا الخيار اختياري لمستخدمي OpenReplay Cloud. الافتراضي: `https://api.openreplay.com/ingest` (الذي يشير إلى OpenReplay Cloud).
+- `revID?: string` معرف المراجعة لتطبيق الويب الخاص بك. مفيد عند البحث عن المشاكل التي تحدث في نسخة إصدار محددة.
+- `resourceBaseHref?: string` يشير إلى النطاق المتاح للعموم الذي يمكن من خلاله تحصيل الأصول (الأنماط، الخطوط والأيقونات) من قبل OpenReplay. لأنها مطلوبة لتسجيل الجلسة الصحيح، فهذا الخيار مفيد للتخطي عن القيود الناتجة عن استضافة موقعك (وبالتالي الأصول) في نطاق خاص. مثال: `https://mypublicsite.com/assets/`.
+- `captureIFrames?: boolean` لتسجيل جميع الإطارات الذات النطاق المشترك في موقع الويب الخاص بك. إذا كنت ترغب
+```js
+network?: {
+    failuresOnly: boolean;
+    sessionTokenHeader: string;
+    ignoreHeaders: Array<string> | boolean;
+    capturePayload: boolean; // make sure you sanitize your data before enabling it
+    sanitizer: (RequestResponseData) => RequestResponseData | null;
+		captureInIframes: boolean;
+  	axiosInstances: AxiosInstance[];
+  }
+```

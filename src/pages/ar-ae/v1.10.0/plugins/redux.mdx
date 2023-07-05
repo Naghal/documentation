@@ -1,0 +1,96 @@
+---
+العنوان: "Redux"
+metaTitle: "Redux"
+metaDescription: "المكون الإضافي Redux لـ OpenReplay."
+---
+استيراد Aside من '~/components/Aside.astro'
+
+يتيح لك هذا المكون الإضافي تلقي إجراءات / حالة Redux وفحصها لاحقًا أثناء إعادة تشغيل تسجيلات الجلسة. هذا مفيد جدًا لفهم وإصلاح المشاكل.
+
+<Aside type="tip">
+نحن نملك أيضًا دليلًا مفصلًا حول كيفية استخدام المكون الإضافي Redux لالتقاط حالة من تطبيقك عند استخدام هذه المكتبة، يمكنك التحقق منه [هنا](/tutorials/redux).
+</Aside>
+
+## التثبيت
+
+
+```bash
+npm i @openreplay/tracker-redux --save
+```
+
+
+## الاستخدام
+
+قم بتهيئة المتعقب ثم ضع الوسيط المولد في سلسلة Redux الخاصة بك.
+
+### إذا كان موقع الويب هو تطبيق واحد صفحة (SPA)
+
+
+```js
+import { applyMiddleware, createStore } from 'redux';
+import OpenReplay from '@openreplay/tracker';
+import trackerRedux from '@openreplay/tracker-redux';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.start();
+const openReplayMiddleware = tracker.use(trackerRedux(<options>)); // check list of available options below
+
+//...
+const store = createStore(
+  reducer,
+  applyMiddleware(openReplayMiddleware) 
+);
+```
+
+
+### إذا كانت تطبيق الويب منشورًا على الخادم (SSR)
+
+اتبع المثال أدناه إذا كان التطبيق SSR. تأكد من أن "tracker.start()" يتم استدعاؤه مرة واحدة عند بدء التطبيق (في "useEffect" أو "componentDidMount").
+
+
+```js
+import { applyMiddleware, createStore } from 'redux';
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerRedux from '@openreplay/tracker-redux/cjs';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+const openReplayMiddleware = tracker.use(trackerRedux(<options>)); // check list of available options below
+
+
+const store = createStore( // You can define/use it anywhere in response handlers
+  reducer,
+  applyMiddleware(openReplayMiddleware)
+);
+
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, []);
+  //... Use store here
+}
+
+```
+
+
+## الخيارات
+
+يمكنك تخصيص سلوك الوسيط باستخدام الخيارات لتنظيف البيانات الخاصة بك.
+
+
+```js
+trackerRedux({
+  actionFilter: action => action.type !== 'DRAW', // only actions which pass this test will be recorded
+  actionTransformer: action => action.type === 'LOGIN' ? null : action,
+  actionType: action => action.type // action type for search, that's the default one
+  stateTransformer: state => {
+    const { jwt, ..._state } = state;
+    return _state;
+  },
+})
+```
+

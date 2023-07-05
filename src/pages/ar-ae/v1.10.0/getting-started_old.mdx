@@ -1,0 +1,34 @@
+---
+الإعداد: |
+    استيراد زر من '../../components/Button.astro'
+    استيراد قائمة المساهمين من '../../components/ContributorList.astro'
+    استيراد علامات تبويب مدير الحزم من '~/components/tabs/PackageManagerTabs.astro'
+
+التخطيط: ~/layouts/MainLayout.astro
+العنوان: البدء
+الوصف: مقدمة أساسية لأسترو.
+i18nReady: صحيح
+---
+استيراد الجانب من '~/components/Aside.astro'
+استيراد { YouTube } من 'astro-embed'
+استيراد البطاقة من '~/components/Card'
+
+<h2>ما هو OpenReplay؟</h2>
+
+<Aside type="tip" title="هل تعلم؟">
+    النص هنا...
+    </Aside>
+  
+المقدمة
+:::tip[هل تعلم؟]
+ أسترو يساعدك على بناء مواقع ويب أسرع مع "هيئة الجزر".
+:::
+
+:::caution[استخدام مع pnpm]
+بسبب المشاكل الأصلية داخل Prettier، لن يتم الكشف عن الملحق تلقائيًا عند استخدام [pnpm] (https://pnpm.io/). لجعله يجد الملحق، يجب إضافة المعلمة التالية عند تشغيل Prettier:
+
+
+```shell
+prettier --write --plugin-search-dir=. .
+```
+

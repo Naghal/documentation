@@ -1,0 +1,80 @@
+---
+العنوان: "تحديد مستخدم"
+metaTitle: "تحديد مستخدم"
+metaDescription: "كيفية ربط معرف المستخدم الداخلي بتسجيل الجلسة."
+---
+استيراد YoutubeVideo من '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="مشاهدة كيفية تحديد المستخدمين في تسجيلاتك"
+  description="إذا لم ترغب في القراءة، يمكنك اتباع هذا الفيديو التعليمي الذي يوضح لك كيفية ربط تسجيلاتك بمستخدميك."
+  videoURL="https://youtu.be/xfotXkeyXZM"
+/>
+
+ربط معرف المستخدم الداخلي بالجلسة التي يتم تسجيلها بمتابعة الخطوات التالية.
+
+### مع NPM
+
+إدخال معرف المستخدم عند بدء المتابع:
+
+
+```js
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+
+tracker.start({
+  userID: "john@doe.com",
+  metadata: {
+    balance: "10M",
+    plan: "free"
+  }
+});
+```
+
+
+إذا لم يكن ذلك ممكنًا (يتعرف على معرف المستخدم في وقت لاحق في تدفق التنقل، لذلك بعد بدء المتابع)، فاستدعاء طريقة setUserID لتحديد مستخدميك. يمكن تغيير هوية المستخدم في أي وقت خلال الجلسة عن طريق استدعاء setUserID. ومع ذلك، سيحافظ OpenReplay على آخر معرف المستخدم المضاف.
+
+
+```js
+tracker.setUserID('john@doe.com'); // after tracker.start()
+```
+
+
+### مع كود JavaScript
+
+بالأسفل هو عينة على كيفية إدخال معرف المستخدم باستخدام الكود. لاحظ المتغير / السطر startOpts لإدخال معرف المستخدم.
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: getUserID() }; // use startOpts variable to inject userID
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay.js", 1, 0, initOpts, startOpts);
+</script>
+```
+
+
+إذا لم يكن ذلك ممكنًا (يتعرف على معرف المستخدم في وقت لاحق في تدفق التنقل، لذلك بعد بدء المتابع)، فبدلاً من ذلك استدعاء طريقة setUserID لتحديد مستخدميك. يمكن تغيير هوية المستخدم في أي وقت خلال الجلسة عن طريق استدعاء setUserID. ومع ذلك، سيحافظ OpenReplay على آخر معرف المستخدم المضاف.
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: "" };
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay.js", 1, 0, initOpts, startOpts);
+</script>
+  ...
+  OpenReplay.setUserID("john@doe.com"); // set the userID later in your code
+  ...
+```
+

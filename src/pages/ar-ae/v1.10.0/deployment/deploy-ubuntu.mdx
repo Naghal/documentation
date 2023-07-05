@@ -1,0 +1,74 @@
+---
+العنوان: "النشر على أوبونتو"
+metaTitle: "النشر على أوبونتو"
+metaDescription: "دليل خطوة بخطوة لنشر OpenReplay على أي جهاز أوبونتو."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+يمكن تثبيت مجموعة OpenReplay على جهاز واحد يعمل بنظام أوبونتو. هذا هو كيفية القيام بذلك.
+
+## المتطلبات الأساسية
+
+- يجب أن يكون النظام الأساسي *أوبونتو سيرفر 20.04 Focal Fossa*.
+- أدنى مواصفات للجهاز الذي يعمل بواسطة OpenReplay هي `2 vCPUs، 8 GB من الذاكرة، 50 GB من التخزين`، وإلا لن تبدأ خدمات OpenReplay الخلفية بسهولة. هذا ينبغي أن يكون كافيًا لحجم منخفض / معتدل. إذا كنت تتوقع حركة عالية، يجب عليك التزامن من هنا.
+- عنوان IP عام يشير إلى جهازك.
+
+## نشر OpenReplay
+
+1. تأكد من أن الجهاز مشغل ثم الاتصال به عبر SSH كمسؤول
+
+2. قم بتثبيت OpenReplay عن طريق توفير النطاق الذي سيتم تشغيله عليه (على سبيل المثال DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+git clone https://github.com/openreplay/openreplay.git
+cd openreplay/scripts/helmcharts
+DOMAIN_NAME=openreplay.mycompany.com bash init.sh
+```
+
+
+## تكوين TLS / SSL
+
+يتعامل OpenReplay مع بيانات المستخدمين الحساسة وبالتالي يتطلب HTTPS للتشغيل. هذا إلزامي، وإلا لن يبدأ المتعقب بتسجيل بسهولة. نفس الشيء لوحة القيادة، دون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.
+
+عليك بالتالي أن تجلب (أو توليد) شهادة SSL الخاصة بك.
+
+1. أولا، انتقل إلى مزود خدمة DNS الخاص بك، وقم بتحرير منطقة DNS الخاصة بك وإنشاء سجل "A". استخدم النطاق الذي سبق أن توفرته أثناء خطوة التثبيت وانحدره إلى الجهاز باستخدام عنوان IP العام الخاص به.
+
+2. إذا كنت تجلب شهادة SSL الخاصة بك، فأنشئ سرية SSL باستخدام الأمر التالي: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **ملاحظة:** إذا لم يكن لديك شهادة، فأنشئ واحدة تتجدد تلقائيًا للنطاق الفرعي (الذي تم توفيره أثناء التثبيت) باستخدام Let's Encrypt. ببساطة اتصل بجهاز OpenReplay، قم بتشغيل `cd openreplay/scripts/helmcharts && bash certmanager.sh` واتبع الخطوات.
+
+3. إذا كنت ترغب في تمكين التحويل من http إلى https (موصى به)، فقم بإلغاء تعليق الكتلة أدناه، تحت قسم `ingress-nginx`، في `/var/lib/openreplay/vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+يستحسن أن نذكر أن `ingress-nginx` يعمل بشكل افتراضي على المنافذ `80 | 443`، ولكن يمكن تغييره بسهولة، إذا لزم الأمر، في `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+
+
+4. أخيرًا، قم بإعادة تثبيت OpenReplay NGINX:
+
+
+```bash
+openreplay -R
+```
+

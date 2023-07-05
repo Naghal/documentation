@@ -1,0 +1,76 @@
+['---\nالعنوان: "المرنة"\nmetaTitle: "التكامل مع محرك البحث المرن Elasticsearch"\nmetaDescription: "كيفية التكامل مع محرك البحث المرن Elasticsearch مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات."\n---\n\nكيفية التكامل مع محرك البحث المرن Elasticsearch مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات.\n\n## 1. إنشاء مفتاح API جديد\n\nإذا كنت تستخدم لوحة القيادة Kibana:\n1. قم بتسجيل الدخول إلى لوحة القيادة Kibana الخاصة بك.\n2. انتقل إلى Dev *Tools > Console*.\n3. قم بنسخ الكود التالي للوحة التحكم وقم بتشغيله.\n\nإذا كنت تستخدم أوامر CURL:\n1. قم بتنفيذ الأمر cURL التالي في الطرفية الخاصة بك.\n\n**ملاحظة:** بشكل افتراضي، يقوم هذا التكامل بالبحث عن السجلات داخل أي فهرس يطابق `*log*`، إذا كان لديك فهرس محدد للسجلات الذي لا يطابق هذا النمط، يرجى تغيير اسم الفهرس في السطر 12 في الأمر التالي. إذا كنت ترغب في تحديد أكثر من فهرس واحد، يمكنك فصل أسماءهم باستخدام `،`.\n\n
+```shell
+POST /_security/api_key
+{
+  "name": "openreplay-api-key",
+  "role_descriptors": {
+    "openreplay-role": {
+      "cluster": [
+        "all"
+      ],
+      "index": [
+        {
+          "names": [
+            "*log*"
+          ],
+          "privileges": [
+            "read"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+', '\n\nإذا كنت قد استخدمت أي من الطرق السابقة لإنشاء مفتاح API، ستحصل على نتيجة كالتالي:\n\n
+```json
+{
+  "id" : "eQWAIG0Bo0VqB8HXFH9-",
+  "name" : "openreplay-api-key",
+  "api_key" : "dZ5ycVRJTU-5UW_RYfi1_w"
+}
+```
+', "\n\nتأكد من نسخ `id` و `api_key` لأننا نحتاجهما لتكاملنا. لمزيد من المعلومات حول إنشاء مفتاح API، يرجى الرجوع إلى هذه الوثيقة [documentation](https://www.elastic.co/guide/en/elasticsearch/reference/master/security-api-create-api-key.html).\n\n## 2. تمكين Elasticsearch في OpenReplay\n\nضع عنوان `host` و `port` و `id` و `api_key` في لوحة القيادة OpenReplay تحت 'Preferences > Integration'.\nإذا قمت بتغيير الفهرس عند إنشاء `api_key`، يرجى تحديد الاسم في `indexes`.\n\n![Elasticsearch Integration in OpenReplay](/static/elastic-1.png#center)\n\n## 3. الانتشار openReplaySessionToken\n\nلربط حدث Elasticsearch مع جلسة المستخدم المسجلة، يجب أن يتم نقل نص فريد من نوعه من الواجهة الأمامية إلى الخلفية في كل طلب تريد تتبعه. يمكن القيام بذلك باستخدام رأس HTTP مخصص. في المثال أدناه، نستخدم وظيفة `fetch` لإرسال ذلك الرأس.\n\n
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // or window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```
+", '\n\nلأجل أن يربط OpenReplay إدخال سجل Elasticsearch مع جلسة المستخدم المسجلة، يجب أن يتم نقل نص فريد من نوعه كجزء من كل خطأ خلفي يرغب في التعقب.\n\nبالأسفل هو مثال في Python باستخدام Monkey Patching.\n\n
+```python
+import sys
+import traceback
+#...
+old_tb = traceback.print_exception
+old_f = sys.stdout
+old_e = sys.stderr
+OPENREPLAY_SESSION_TOKEN = None
+
+class F:
+    def write(self, x):
+        if OPENREPLAY_SESSION_TOKEN is not None and x != '\n':
+            old_f.write(f"[openReplaySessionToken={OPENREPLAY_SESSION_TOKEN}] {x}")
+        else:
+            old_f.write(x)
+
+    def flush(self):
+        pass
+
+def tb_print_exception(etype, value, tb, limit=None, file=None, chain=True):
+    if OPENREPLAY_SESSION_TOKEN is not None:
+        value = type(value)(f"[openReplaySessionToken={OPENREPLAY_SESSION_TOKEN}] " + str(value))
+    old_tb(etype, value, tb, limit, file, chain)
+
+traceback.print_exception = tb_print_exception
+
+sys.stderr = F()
+```
+']

@@ -1,0 +1,52 @@
+عنوان: "Bugsnag"
+metaTitle: "التكامل مع Bugsnag"
+metaDescription: "كيفية التكامل مع Bugsnag مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات."
+
+كيفية التكامل مع Bugsnag مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات.
+
+## 1. إنشاء رمز التفويض
+
+1. سجل الدخول إلى حسابك في [Bugsnag](https://app.bugsnag.com).
+2. انتقل إلى *الإعدادات> حسابي> رموز التفويض الشخصية *.
+3. انقر فوق زر *Generate new token +*.
+4. في الوصف ضع `openreplay`.
+5. انقر على زر *Generate*.
+6. انسخ الرمز ثم اضغط على زر *Done*.
+
+![Bugsnag Personal Auth Tokens](/static/bugsnag-1.jpg#center)
+
+## 2. تمكين Bugsnag في OpenReplay
+
+ضع رمز التفويض الخاص بك في لوحة التحكم OpenReplay تحت 'التفضيلات> التكامل' واختر المشروع الذي تريد تتبعه من القائمة المنسدلة.
+
+![Bugsnag Integration in OpenReplay](/static/bugsnag-2.jpg#center)
+
+## 3. نشر openReplaySessionToken
+
+لربط حدث Bugsnag مع جلسة المستخدم المسجلة، يجب نشر رمز فريد من نوعه من الواجهة الأمامية إلى الخلفية في كل طلب تريد تتبعه. يمكن القيام بذلك باستخدام رأس HTTP مخصص. في المثال أدناه، نستخدم وظيفة `fetch` لإرسال ذلك الرأس.
+
+
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // use window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```
+
+
+لأجل أن يربط OpenReplay إدخال سجل Bugsnag مع جلسة المستخدم المسجلة، يجب نشر رمز فريد من نوعه كـ `meta_data> special_info` إلى كل خطأ خلفي يريد تتبعه.
+
+بالأسفل هو مثال في API Python لـ Bugsnag.
+
+
+```python
+bugsnag.notify(EXCEPTION_OBJECT,  meta_data={"special_info":{"openReplaySessionToken": OPENREPLAY_SESSION_TOKEN}})
+```
+

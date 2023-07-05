@@ -1,0 +1,200 @@
+عنوان: "التحليل الشخصي"
+metaTitle: "التحليل الشخصي"
+metaDescription: "كيفية تمديد خدمة التحليلات الشخصية بالخوارزمية الخاصة بك"
+
+نحن نستخدم المصطلح التحليلات الشخصية للخوارزميات البسيطة والمحمية المستخدمة للكشف عن المشاكل مثل معالج المعالجات العالية أو النقرات الغير مرغوب فيها. هنا سنستخدم مثال واحد لفهم كيفية عمل التحليلات الشخصية وكيفية إنشاء الكشاف الخاص بك ورؤية نتائجه في DevTools.
+
+## قوالب
+
+يوجد قالب للتحليلات الشخصية في المسار `openreplay/backend/pkg/handlers/custom`.
+
+
+```tsx
+package custom
+
+import . "openreplay/backend/pkg/messages"
+
+type CustomHandler struct {
+	lastTimestamp uint64
+}
+
+func (h *CustomHandler) Handle(message Message, messageID uint64, timestamp uint64) Message {
+	h.lastTimestamp = timestamp
+	return nil
+}
+
+func (h *CustomHandler) Build() Message {
+	return nil
+}
+```
+
+
+عندما يتم إنشاء طريقة التحليلات الشخصية يمكن إضافتها عن طريق تعديل الملف `main.go` في المسار `openreplay/backend/cmd/heuristics` عن طريق استيراد الوحدة المخصصة وإضافة الوظيفة المخصصة إلى معالج محتوى الرسالة.
+
+```tsx
+package main
+
+import (
+        "log"
+        "openreplay/backend/internal/config/heuristics"
+        "openreplay/backend/pkg/handlers"
+        web2 "openreplay/backend/pkg/handlers/web"
+        "openreplay/backend/pkg/intervals"
+        logger "openreplay/backend/pkg/log"
+        "openreplay/backend/pkg/messages"
+        "openreplay/backend/pkg/queue"
+        "openreplay/backend/pkg/queue/types"
+        "openreplay/backend/pkg/sessions"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+        // Import custom modules here
+)
+
+func main() {
+        log.SetFlags(log.LstdFlags | log.LUTC | log.Llongfile)
+
+        // Load service configuration
+        cfg := heuristics.New()
+
+        // HandlersFabric returns the list of message handlers we want to be applied to each incoming message.
+        handlersFabric := func() []handlers.MessageProcessor {
+                return []handlers.MessageProcessor{
+                        // web handlers
+                        &web2.ClickRageDetector{},
+                        &web2.CpuIssueDetector{},
+                        &web2.DeadClickDetector{},
+                        &web2.MemoryIssueDetector{},
+                        &web2.NetworkIssueDetector{},
+                        &web2.PerformanceAggregator{},
+                        // Add custom handlers here
+                }
+        }
+        ...
+}
+```
+
+
+## مثال العودة السريعة
+
+لهذا المثال ، سنقوم بإنشاء التحليلات الشخصية العودة السريعة ، والتي سترسل إشارة كلما عادنا إلى نفس العنوان URL خلال أقل من خمس ثوانٍ. الطريقة المنفذة للكشف عن هذا الحدث ستستفيد من الأحداث `SetPageLocation` و `MouseClick`. كلما كان لدينا نقرة للفأرة ، نحدث تاريخ الحالي وإذا تم استلام رسالة `SetPageEvent` خلال خمس ثوانٍ تشير إلى الصفحة الحالية ، ثم نعيد حدث QuickReturn.
+
+للبدء ، دعنا ننشئ الملف `quickreturn.go` في المسار `openreplay/backend/pkg/handlers/custom` ويحتوي على الكود الموضح أدناه
+
+
+```go
+package custom
+import (
+    "log"
+    "encoding/json"
+    . "openreplay/backend/pkg/messages"
+)
+type QuickReturnDetector struct {
+    timestamp   uint64
+    currentPage string
+    lastPage    string
+}
+
+type CustomPayload struct {
+        Timestamp   uint64 `json:"timestamp"`
+        CurrentPage string `json:"current_page"`
+}
+
+// If received SetPageLocation on same 
+func (h *QuickReturnDetector) HandleSetPageLocation(msg *SetPageLocation, messageID uint64, timestamp uint64) Message {
+    if (h.timestamp + 5000 >= msg.NavigationStart && h.lastPage == msg.URL) {
+        h.timestamp = msg.NavigationStart
+        return h.Build()
+    }
+    h.lastPage = h.currentPage
+    h.currentPage = msg.URL
+    h.timestamp = msg.NavigationStart
+    return nil
+}
+// detect when a button is clicked (selector must have string 'button' in it)
+func (h *QuickReturnDetector) HandleMouseClick(msg *MouseClick, messageID uint64, timestamp uint64) {
+    h.timestamp = timestamp
+}
+func (h *QuickReturnDetector) Handle(message Message, messageID uint64, timestamp uint64) Message {
+    switch msg := message.(type) {
+    case *SetPageLocation:
+        if msg.NavigationStart != 0 {
+            return h.HandleSetPageLocation(msg, messageID, timestamp)
+        }
+    case *MouseClick:
+        h.HandleMouseClick(msg, messageID, timestamp)
+    }
+    return nil
+}
+func (h *QuickReturnDetector) Build() Message {
+    payload := &CustomPayload{
+        CurrentPage: h.currentPage,
+        Timestamp: h.timestamp,
+    }
+    payloadData, err := json.Marshal(payload)
+    if err != nil {
+            log.Println("JSON encoding error", err)
+            return nil
+    }
+    payloadString := string(payloadData)
+    event := &CustomEvent {
+        MessageID: 122,
+        Timestamp: h.timestamp,
+        Name:      "quickreturn",
+        Payload:   payloadString,
+    }
+    return event
+}
+```
+
+
+الآن تم إنشاء التحليلات الشخصية ، فقط يحتاج إلى تمكينه. لفعل ذلك ، يجب إضافة التحليلات الشخصية إلى الملف `main.go` في المسار `openreplay/backend/cmd/heuristics` كما يلي:
+
+
+```tsx
+package main
+
+import (
+        "log"
+        "openreplay/backend/internal/config/heuristics"
+        "openreplay/backend/pkg/handlers"
+        web2 "openreplay/backend/pkg/handlers/web"
+        "openreplay/backend/pkg/intervals"
+        logger "openreplay/backend/pkg/log"
+        "openreplay/backend/pkg/messages"
+        "openreplay/backend/pkg/queue"
+        "openreplay/backend/pkg/queue/types"
+        "openreplay/backend/pkg/sessions"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+        // Add custom module
+        custom "openreplay/backend/pkg/custom"
+)
+
+func main() {
+        log.SetFlags(log.LstdFlags | log.LUTC | log.Llongfile)
+
+        // Load service configuration
+        cfg := heuristics.New()
+
+        // HandlersFabric returns the list of message handlers we want to be applied to each incoming message.
+        handlersFabric := func() []handlers.MessageProcessor {
+                return []handlers.MessageProcessor{
+                        // web handlers
+                        &web2.ClickRageDetector{},
+                        &web2.CpuIssueDetector{},
+                        &web2.DeadClickDetector{},
+                        &web2.MemoryIssueDetector{},
+                        &web2.NetworkIssueDetector{},
+
+                        // The new handler
+                        &custom.QuickReturnDetector{},
+                }
+        }
+        ...
+}
+```
+

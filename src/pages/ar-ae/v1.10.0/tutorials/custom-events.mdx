@@ -1,0 +1,163 @@
+---
+title: "استخدام الأحداث المخصصة لتحسين التتبع"
+metaTitle: "تحسين قدرتك على التتبع باستخدام الأحداث المخصصة والمشاكل المخصصة"
+metaDescription: "الاستيلاء على جميع أنواع الأحداث المخصصة من خلال واجهة برمجة التطبيقات الخاصة بالأحداث"
+---
+الأحداث المخصصة هي مفهوم بسيط وقوي يوفره متتبعنا دون الحاجة إلى إضافة أي شيء إضافي.
+يمكن أن يمد البيانات المتتبعة بما يحتاجه أي شخص، سواء كانت الأخطاء المخصصة ذات صلة بمنطقك التجاري أو حتى الأحداث البسيطة، للاعتناء بما يفعله المستخدمون.
+
+متتبعنا بشكل افتراضي سيحافظ على العديد من الأشياء المختلفة، بما في ذلك بعض الأخطاء المفيدة، ولكن قد لا يكون هذا كافيًا بالنسبة لك، ولهذا نحن نملك الأحداث المخصصة.
+
+## إضافة الأحداث المخصصة
+
+لهذا المثال، دعنا نأخذ موقع التجارة الإلكترونية العام ونضيف بعض الأحداث لفهم عندما يضيف المستخدم منتجًا إلى سلة التسوق.
+
+بشكل افتراضي، لن يتتبع OpenReplay هذه المعلومات. ومع ذلك، من خلال الأحداث المخصصة، يمكنك بسهولة الاستمرار في التتبع.
+
+لهذا الدرس، سنستخدم مشروع Next.js الذي يتم إعداده بما يتوافق مع نفس البنية كما في الدرس [Next.js](https://docs.openreplay.com/tutorials/next)، لذلك لا تتردد في التحقق من ذلك إذا لم تفعل ذلك بالفعل.
+
+### إنشاء مزود المتتبع
+
+المنطق في هذا الملف يتم شرحه كاملًا في [هذا الدرس](https://docs.openreplay.com/tutorials/next).
+
+كل ما تحتاج إلى معرفته الآن، هو أن هذا هو مزود سيطرة نحن ننشئه للسماح لك بالتفاعل مع المتتبع من خلال العديد من الوظائف.
+
+بالخصوص، سنهتم ب `logIssue` و `logEvent` الذين يتيحان لك إرسال مشكلة مخصصة أو حدث إلى المنصة.
+
+- **الأحداث** مخصصة لتسجيل إجراءات محددة للمستخدم. في حالتنا على سبيل المثال، سنسجل إضافة منتج إلى السلة.
+- **المشاكل**، من جهة أخرى، مخصصة لتسجيل الأخطاء التي لا يتم التقاطها تلقائيًا من قبل متتبعنا. في حالتنا، سنقوم بتحديد خطأ شبكة مما يمنعنا من الوصول إلى واجهة برمجة التطبيقات الخارجية. عندما يحدث ذلك، سنسجل مشكلة في المنصة.
+
+
+```jsx
+import { createContext, useCallback } from 'react'
+import Tracker from '@openreplay/tracker'
+import { v4 as uuidV4 } from 'uuid'
+import { useReducer } from 'react'
+
+export const TrackerContext = createContext()
+function defaultGetUserId() {
+  return uuidV4()
+}
+function newTracker(config) {
+  const getUserId =
+    config?.userIdEnabled && config?.getUserId
+      ? config.getUserId
+      : defaultGetUserId
+  let userId = null
+  const trackerConfig = {
+    projectKey:
+      config?.projectKey || process.env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
+ 
+  }
+  if (config?.ingestPoint || process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT) {
+    trackerConfig.ingestPoint =
+      config?.ingestPoint || process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT
+  }
+
+  console.log('Tracker configuration: ')
+  console.log(trackerConfig)
+  const tracker = new Tracker(trackerConfig)
+  if (config?.userIdEnabled) {
+    userId = getUserId()
+    tracker.setUserID(userId)
+  }
+  return tracker
+}
+function reducer(state, action) {
+  switch (action.type) {
+    case 'init': {
+      if (!state.tracker) {
+        console.log('Instantiaing the tracker for the first time...')
+        let t = newTracker(state.config)
+        let pluginsReturnedValue = {}
+        if (state.config.plugins) {
+          state.config.plugins.forEach((p) => {
+            console.log('Using plugin...')
+            pluginsReturnedValue[p.name] = t.use(p.fn(p.config))
+          })
+        }
+        return {
+          ...state,
+          pluginsReturnedValue: pluginsReturnedValue,
+          tracker: t,
+        }
+      }
+      return state
+    }
+    case 'start': {
+      console.log('Starting tracker...')
+      state.tracker.start()
+      return state
+    }
+    case 'logEvent': {
+      console.log('Logging event')
+      state.tracker?.event(action.payload?.name, action.payload?.data)
+      return state
+    }
+    case 'logIssue': {
+      console.log('Logging issue')
+      state.tracker?.issue(action.payload?.name, action.payload?.data)
+      return state
+    }
+  }
+}
+export default function TrackerProvider({ children, config = {} }) {
+  let [state, dispatch] = useReducer(reducer, {
+    tracker: null,
+    pluginsReturnedValue: {},
+    config,
+  })
+  let value = {
+    startTracking: () => dispatch({ type: 'start' }),
+    initTracker: () => dispatch({ type: 'init' }),
+    logEvent: (evnt) => dispatch({ type: 'logEvent', payload: evnt }),
+    logIssue: (evnt) => dispatch({ type: 'logIssue', payload: evnt }),
+    pluginsReturnedValues: { ...state.pluginsReturnedValue },
+  }
+  return (
+    <TrackerContext.Provider value={value}>{children}</TrackerContext.Provider>
+  )
+}
+```
+
+
+وتحتوي دوال `logEvent` و `logIssue` على نفس التوقيع، وسنمرر كائنًا محتويًا على خصائص `name` و `data`. سيتم استخدام `name` لتحديد سجلنا في واجهة المستخدم لـ OpenReplay وسيحتوي `data` على المعلومات المسجلة.
+
+**تذكر**: يجب أن تحتوي خاصية `data` على كائن قابل للترجمة.
+
+بعد ذلك، يمكننا تعيين هذا المزود في ملف `_app.tsx` الخاص بنا مثل هذا:
+
+
+```jsx
+
+//imports here...
+
+export default function MyApp({ Component, pageProps }: AppProps) {
+  const Layout = (Component as any).Layout || Noop
+
+  useEffect(() => {
+    document.body.classList?.remove('loading')
+  }, [])
+
+  return (
+    <TrackerProvider config={{}}>
+      <Head />
+      <ManagedUIContext>
+        <Layout pageProps={pageProps}>
+          <Component {...pageProps} />
+        </Layout>
+      </ManagedUIContext>
+    </TrackerProvider>
+  )
+}
+```
+
+
+بعد ذلك، يمكن
+```jsx
+//outside the component
+import { TrackerContext } from '../../../context/trackerProvider'
+
+//inside the component
+const { logEvent, logIssue } = useContext(TrackerContext)
+```

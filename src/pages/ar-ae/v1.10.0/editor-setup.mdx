@@ -1,0 +1,48 @@
+---
+layout: ~/layouts/MainLayout.astro
+title: إعداد المحرر
+description: ضبط محررك لبناء مع Astro.
+i18nReady: true
+---
+استيراد Badge من '~/components/Badge.astro';
+
+تخصيص محرر الكود الخاص بك لتحسين تجربة المطورين الخاصة بأسترو وفتح ميزات جديدة.
+
+## VS Code
+
+[VS Code](https://code.visualstudio.com/) هو محرر كود شعبي لمطوري الويب، الذي بناه مايكروسوفت. يحمل محرك VS Code أيضًا محررات الكود المضمنة في المتصفح مثل [GitHub Codespaces](https://github.com/features/codespaces) و[Gitpod](https://gitpod.io/).
+
+يعمل Astro مع أي محرر كود. ومع ذلك، نحن نوصي باستخدام VS Code لمشاريع Astro. نحن نحتفظ بالتمديد الرسمي [Astro VS Code Extension](https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode) الذي يفتح عددًا من الميزات الرئيسية وتحسينات التجربة المطورين لمشاريع Astro.
+
+- التسليط اللوني لملفات ".astro".
+- معلومات نوع TypeScript لملفات ".astro".
+- [VS Code Intellisense](https://code.visualstudio.com/docs/editor/intellisense) لإكمال الكود والتلميحات وغيرها.
+
+للبدء، قم بتثبيت [Astro VS Code Extension](https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode) اليوم.
+
+📚 انظر كيفية [إعداد TypeScript](/en/guides/typescript/) في مشروع Astro الخاص بك.
+
+## محررو الكود الآخرون
+
+يحتفظ مجتمعنا الرائع بعدد من التمديدات لمحررات شعبية أخرى، بما في ذلك:
+
+- [VS Code Extension on Open VSX](https://open-vsx.org/extension/astro-build/astro-vscode) <span style="margin: 0.25em;"><Badge variant="accent">Official</Badge></span> - التمديد Astro VS Code الرسمي، متوفر في سجل Open VSX للمنصات المفتوحة مثل [VSCodium](https://vscodium.com/)
+- [Nova Extension](https://extensions.panic.com/extensions/sciencefidelity/sciencefidelity.astro/) <span style="margin: 0.25em;"><Badge variant="neutral">Community</Badge></span> - يوفر التسليط اللوني وإكمال الكود لأسترو داخل Nova
+- [Vim Plugin](https://github.com/wuelnerdotexe/vim-astro) <span style="margin: 0.25em;"><Badge variant="neutral">Community</Badge></span> - يوفر التسليط اللوني والتهجئة ودعم الطي لأسترو داخل Vim أو Neovim
+- Neovim [LSP](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#astro) و [TreeSitter](https://github.com/virchau13/tree-sitter-astro) Plugins <span style="margin: 0.25em;"><Badge variant="neutral">Community</Badge></span> - يوفر التسليط اللوني وتحليل TreeSitter وإكمال الكود لأسترو داخل Neovim
+
+### JetBrains IDEs
+
+نحن نحب دعم [Webstorm IDE](https://www.jetbrains.com/webstorm/). للأسف، لا يدعم الخدمات اللغوية وليس لدينا النطاق لكتابة والحفاظ على تمديد منفصل بشكل كامل بلغة مختلفة عن قاعدة البيانات الحالية لدينا. افتح [التذكرة الدعمية المتعلقة ل JetBrains](https://youtrack.jetbrains.com/issue/WEB-52015/Astro-Language-Support) للتصويت على التذكرة ومتابعة التقدم والعثور على الحلول المجتمعية.
+
+سيدعم [Fleet IDE](https://www.jetbrains.com/fleet/) القادم من JetBrains' خدمات اللغة وسيتمكن أداة الحالية المتاحة من تشغيل هناك دون أي مشكلة.
+
+## محررو المتصفح
+
+بالإضافة إلى المحررين المحليين، يعمل Astro بشكل جيد في محررو المتصفح المستضافون، بما في ذلك:
+
+- [StackBlitz](https://stackblitz.com/) و[CodeSandbox](https://codesandbox.io/) - محررون عبر الإنترنت الذين يعملون في المتصفح الخاص بك، مع دعم التسليط اللوني المضمن لملفات ".astro". لا تثبيت أو تكوين مطلوب!
+- [GitHub.dev](https://github.dev/) - يتيح لك
+```shell
+npm install --save-dev prettier prettier-plugin-astro
+```

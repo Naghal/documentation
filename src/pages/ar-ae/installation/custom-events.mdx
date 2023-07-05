@@ -1,0 +1,88 @@
+---
+العنوان: "أحداث مخصصة"
+metaTitle: "أحداث مخصصة"
+metaDescription: "كيفية إرسال أحداث محددة للمجال وإضافة ذكاء إضافي إلى تسجيلات الجلسات."
+---
+استيراد من '~/components/Aside.astro'
+
+الأحداث المخصصة هي ممتازة لإضافة المزيد من الذكاء عن طريق تسجيل الأحداث المحددة للمجال جنبا إلى جنب مع تسجيلات الجلسات. OpenReplay يستخدم نوعين من الأحداث: الوظيفية (`event`) والفنية (`issue`). جميع الأحداث يتم فهرستها للبحث السهل، ومزامنتها مع تسجيلات الجلسات.
+
+<Aside type="tip">
+نحن لدينا أيضًا درسًا مفصلًا حول كيفية إرسال الأحداث المخصصة، يمكنك التحقق منه [هنا](/tutorials/custom-events).
+</Aside>
+
+## الأحداث الوظيفية
+
+الأحداث الوظيفية يتم فهرستها ويجعل البحث عن تسجيلات الجلسات أسهل. إذا تم استلامها بنجاح من قبل OpenReplay، فسيتوفرون كما عاملات تصفية في شريط البحث الشامل.
+
+![Functional Event](/static/custom-events-1.png#center)
+
+### مع NPM
+
+استخدم طريقة `event` لإشارة إلى الأحداث الوظيفية مثل *إكمال الطلب* أو *إضافة المنتج*. يأخذ بها معلمتين: *الاسم* (السلسلة) و *البيانات المرفقة* (كائن JS غير تكراري).
+
+
+```js
+tracker.event('product_added', 'shoes'); // after tracker.start()
+```
+
+
+### مع كود JavaScript
+
+بالأسفل هو مثال على كيفية إرسال حدث وظيفي باستخدام الكود القصير.
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: ""}; 
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay.js", 1, 0, initOpts, startOpts);
+</script>
+  ...
+  __OPENREPLAY__.app.event('product_added', 'shoes'); // send a functional event later in your code
+  ...
+```
+
+
+## الأحداث الفنية
+
+الأحداث الفنية تظهر في تسجيل الجلسة تحت علامة التبويب *الأحداث* في DevTools، وكتعليقات على التشغيل. كما أنها تأخذ في الحساب في الأنابيب للربط بين إنخفاض التحويل مع المشاكل الفنية.
+
+![Technical Event](/static/custom-events-2.png#center)
+
+### مع NPM
+
+يتم استخدام `issue` لإرسال الأحداث الفنية، مثل الأخطاء التي قد تحدث في مجموعتك أو النظم الأخرى التي يتم تخزينها بعيدًا. `issue` يأخذ معلمتين: *الاسم* (السلسلة) و *البيانات المرفقة* (كائن JS غير تكراري).
+
+
+```js
+tracker.issue('payment_error', {code: 500, context: 42}); // after tracker.start()
+```
+
+
+### مع كود JavaScript
+
+بالأسفل هو مثال على كيفية إرسال حدث فني باستخدام الكود القصير.
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: "" }; 
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay.js", 1, 0, initOpts, startOpts);
+</script>
+  ...
+  __OPENREPLAY__.app.issue('payment_error', {code: 500, context: 42}); // send a technical event (issue) later in your code
+  ...
+```
+

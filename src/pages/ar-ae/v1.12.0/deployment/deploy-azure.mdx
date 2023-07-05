@@ -1,0 +1,83 @@
+---
+العنوان: "النشر إلى Azure"
+metaTitle: "النشر إلى Azure"
+metaDescription: "دليل خطوة بخطوة لنشر OpenReplay على Azure."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+استيراد YoutubeVideo من '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="مشاهدة كيفية تثبيت OpenReplay في البنية التحتية الخاصة بك في Azure"
+description="إذا لم ترغب في القراءة، يمكنك اتباع هذا الدرس التعليمي المرئي يشرح لك كيفية تثبيت OpenReplay في Azure"
+videoURL="https://www.youtube.com/watch?v=bkVw32UKf7Q"
+/>
+
+مجموعة OpenReplay يمكن تثبيتها على جهاز واحد ومايكروسوفت أزور هو المرشح المثالي. هذا هو كيفية القيام بذلك.
+
+## إطلاق VM
+
+1. سجل الدخول إلى البوابة الخاصة بك
+2. انقر فوق 'Virtual Machine' إذا كان متاحًا على الشاشة الرئيسية. على سبيل الإحتياط، انقر فوق 'Create a Resource' > 'Compute' > 'Virtual Machine'
+3. على صفحة 'Virtual Machine'، انقر فوق 'Add' إذا لم تتم إعادة توجيهك تلقائيًا إلى صفحة الإنشاء
+4. اختر *Ubuntu Server 20.04 LTS* لـ 'Image'
+4. اختر مواصفات VM الخاصة بك. الموارد **الأدنى** هي `2 vCPUs، 8 GB of RAM، 50 GB of storage`، وإلا لن تبدأ خدمات OpenReplay الخلفية بسهولة. المواصفات الأدنى كافية لحجم قليل / معتدل. إذا كنت تتوقع حركة كبيرة، يجب عليك التحجيم من هنا.
+5. قم بتمكين منافذ HTTP (80)، HTTPS (443) وSSH (22) واحذر من `اسم المستخدم`
+6. انقر فوق 'Review + create'
+
+## نشر OpenReplay
+
+1. تأكد من أن VM هو `Running` ثم اتصل به:
+
+
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem ## only if you've previously created an SSH key
+chmod 400 $SSH_KEY
+INSTANCE_IP=REPLACE_WITH_INSTANCE_PUBLIC_IP
+ssh <username>@$INSTANCE_IP ## or ssh -i $SSH_KEY <username>@$INSTANCE_IP if you have a key
+```
+
+
+2. قم بتثبيت OpenReplay عن طريق توفير النطاق على الذي سيتم تشغيله (مثلاً DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+## تكوين TLS / SSL
+
+OpenReplay يتعامل مع بيانات المستخدم الحساسة وبالتالي يتطلب HTTPS للتشغيل. هذا إلزامي، وإلا لن يبدأ المتعقب ببساطة التسجيل. نفس الشيء لوحة القيادة، دون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.
+
+يجب عليك بالتالي إنشاء (أو جلب) شهادة SSL الخاصة بك.
+
+1. أولاً، انتقل إلى Azure DNS (أو مزود خدمة DNS آخر) وإنشاء سجل 'A'. استخدم النطاق الذي سبق أن توفرته أثناء خطوة التثبيت واقترحه إلى VM باستخدام عنوان IP العام الخاص به.
+
+2. إذا كنت تجلب شهادة SSL الخاصة بك، فأنشئ سرية SSL باستخدام الأمر التالي: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **ملاحظة:** إذا لم يكن لديك شهادة، فأنشئ واحدة تتجدد تلقائيًا للنطاق الفرعي (الذي تم توفيره أثناء التثبيت) باستخدام Let's Encrypt. ببساطة الاتصال بجهاز VM OpenReplay، قم بتشغيل `cd /var/lib/openreplay/openreplay/scripts/helmcharts && bash certmanager.sh` واتبع الخطوات.
+
+3. إذا كنت ترغب في تمكين التحويل من http إلى https (موصى به)، فقم بإلغاء تعليق الكتلة أدناه، تحت جزء 'ingress-nginx'، في `/var/lib/openreplay/vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+من المستحسن أن نذكر أن `ingress-nginx` يعمل بشكل افتراضي على المنا
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```

@@ -1,0 +1,14 @@
+---
+العنوان: "سياسة الأمان الخاصة بالمحتوى (CSP)"
+metaTitle: "CSP"
+metaDescription: "سياسة الأمان الخاصة بالمحتوى للسماح لOpenReplay بتسجيل الجلسات."
+---
+استيراد جانبي من '~/components/Aside.astro'
+
+بالأسفل هي السياسة (CSP) للسماح لOpenReplay بتسجيل الجلسات.
+
+
+```html
+worker-src ‘self’ blob: https://*.openreplay.com; script-src ‘self’ https://*.openreplay.com;
+```
+

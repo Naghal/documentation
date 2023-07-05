@@ -1,0 +1,72 @@
+---
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+title: "تثبيت على AWS"
+metaTitle: "تثبيت على AWS"
+metaDescription: "دليل خطوة بخطوة لتثبيت OpenReplay على Amazon AWS."
+---
+import YoutubeVideo from '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="مشاهدة كيفية تثبيت OpenReplay في البيئة الخاصة بك في AWS"
+  description="إذا لم تكن تحب القراءة، يمكنك اتباع هذا الدرس التعليمي المرئي الذي يوضح لك كيفية تثبيت OpenReplay في AWS"
+  videoURL="https://www.youtube.com/watch?v=0-02jJyL4_A"
+  />
+
+OpenReplay stack يمكن تثبيته على جهاز واحد و AWS EC2 هو المرشح المثالي.
+
+## إطلاق نموذج EC2
+
+1. انتقل إلى لوحة معلومات AWS EC2
+2. 'إطلاق نموذج جديد'
+3. اختر AMI الخاص بك. لهذا الدليل، سنستخدم *Ubuntu Server 20.04 LTS*
+4. اختر نوع النموذج الخاص بك. المواصفات الأدنى هي `2 vCPUs، 8 GB of RAM، 50 GB of storage`، وإلا لن يبدأ خدمات OpenReplay backend بسهولة. لذلك، نوصي **على الأقل** ب `t3.large` (أو ما يعادلها)، وهذا كافي لحجم منخفض / متوسط. إذا كنت تتوقع حركة كبيرة، يجب عليك التزامن من هنا.
+5. تكوين تفاصيل النموذج: ضبط إعدادات الشبكة / الشبكة إذا لزم الأمر أو احفظ الإعدادات الافتراضية
+6. إضافة التخزين: ضبط الحجم على 50 GB (General Purpose SSD (gp2))
+7. إضافة الوسوم: ضبط الإعدادات أو احفظ الإعدادات الافتراضية
+8. مجموعات الأمان: احتفظ بالقاعدة SSH الحالية وأضف 2 أخرى لHTTP (80) و HTTPS (443) (المصدر: 0.0.0.0/0)
+9. انقر فوق 'مراجعة وإطلاق'
+10. إنشاء / تنزيل المفتاح SSH ثم اضغط على 'إطلاق النماذج'
+
+## تثبيت OpenReplay
+
+1. تأكد من أن النموذج يعمل `Running` ثم قم بالاتصال به:
+
+
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem #! wherever you've saved the SSH key
+INSTANCE_IP=REPLACE_WITH_INSTANCE_PUBLIC_IP
+chmod 400 $SSH_KEY
+ssh -i $SSH_KEY ubuntu@$INSTANCE_IP
+```
+
+
+2. قم بتثبيت OpenReplay عن طريق توفير النطاق الذي سيتم تشغيله عليه (على سبيل المثال DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+## تكوين TLS / SSL
+
+OpenReplay يتعامل مع بيانات المستخدم الحساسة وبالتالي يتطلب HTTPS للتشغيل. هذا إلزامي، وإلا لن يبدأ المتعقب بتسجيل بسهولة. نفس الشيء للمشغل، بدون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.
+
+أسهل طريقة لمعالجة SSL في AWS هي إعداد توزيع الحمولة (ELB) وتشغيل OpenReplay وراءه. الخيار الآخر هو إنشاء شهادة SSL أو استخدام شهادتك الخاصة والإشارة إلى النطاق الفرعي الخاص بك (أي openreplay.mycompany.com) إلى نموذج OpenReplay. المزيد على كلا الخيارين أدناه.
+
+### إعداد توزيع الحمولة AWS (الخيار 1)
+
+1. انتقل إلى 'EC2' > 'توزيع الحمولة'
+2. 'إنشاء توزيع الحمولة' واختر *Application Load Balancer*
+3. إضافة مستمع إلى HTTPS (احتفظ بهذا الوحيد) وتأكد من تحديد نفس الشبكة (الشبكات) فيها يتم تشغيل نموذج OpenReplay.
+4. اختر شهادة موجودة (على سبيل المثال *.mycompany.com) أو إنشاء شهادة جديدة من AWS Certificate Manager (ACM). يمكنك أيضًا استيراد الخاص بك.
+5. تكوين مجموعات الأمان
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      use-forwarded-headers: true
+```

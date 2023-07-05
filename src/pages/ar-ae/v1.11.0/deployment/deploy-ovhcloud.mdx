@@ -1,0 +1,66 @@
+---
+العنوان: "النشر إلى OVHcloud"
+metaTitle: "النشر إلى OVHcloud"
+metaDescription: "دليل خطوة بخطوة للنشر OpenReplay على OVHcloud (خادم مخصص، VPS، آلة افتراضية Private Cloud أو نموذج Public Cloud)."
+layout: ~/layouts/MainLayout.astro
+i18nReady: صحيح
+---
+
+يمكن تثبيت مجموعة OpenReplay على آلة واحدة وخادم OVHcloud المخصص، VPS، آلة افتراضية Private Cloud أو نموذج Public Cloud هو المرشح المثالي. هذا هو كيفية القيام بذلك.
+
+## طلب خادمك أو إطلاق نموذجك
+
+يمكنك استخدام أي من المنتجات OVHcloud التالية لنشر OpenReplay:
+
+- خادم مخصص
+- VPS
+- Private Cloud (داخل آلة افتراضية)
+- نموذج Public Cloud
+
+المتطلبات الأساسية:
+
+- اختر *Ubuntu Server 20.04 Focal Fossa* كنظام التشغيل.
+- المواصفات الأدنى للآلة التي تعمل على OpenReplay هي `2 vCPUs، 8 GB من الذاكرة، 50 GB من التخزين`، وإلا لن تبدأ خدمات OpenReplay الخلفية بسهولة. هذا ينبغي أن يكون كافيًا لحجم منخفض / معتدل. إذا كنت تتوقع حركة عالية، يجب عليك التزامن من هنا.
+- عنوان IP عام يشير إلى خادمك / نموذجك.
+
+## نشر OpenReplay
+
+1. تأكد من أن خادمك / نموذجك قد بدأ ثم الاتصال به من خلال SSH كمسؤول
+
+2. قم بتثبيت OpenReplay عن طريق توفير النطاق الذي سيتم تشغيله عليه (على سبيل المثال DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+من المستحسن أن نذكر أن `ingress-nginx` يعمل بشكل افتراضي على المنافذ `80 | 443`، ولكن يمكن تغييره بسهولة، إذا لزم الأمر، في `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+4. أخيرًا، قم بإعادة تثبيت OpenReplay NGINX:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+
+```bash
+openreplay -R
+```

@@ -1,0 +1,86 @@
+---
+العنوان: "تنظيف التخزين"
+metaTitle: "تنظيف التخزين"
+metaDescription: "حذف التسجيلات بالجملة من قاعدة البيانات وتنظيف التخزين الخاص بك."
+---
+استيراد جانبي من '~/components/Aside.astro'
+
+يتم تخزين كل تسجيل في شكل ملف ومدخل في قاعدة البيانات. يفرغ OpenReplay ما هو ضروري لإعادة تشغيل جلسة (تغييرات DOM، إحداثيات الفأرة، سجلات الطرفية، نشاط الشبكة وأكثر من ذلك) إلى ملف واحد. يتم تخزين هذه الملفات بشكل افتراضي على المثيل الخاص بك، لذلك يشكلون معظم التخزين الخاص بك. سيتم تخزين بيانات الوصف الخاصة بالجلسة في قاعدة بيانات PostgreSQL إلى الأبد، ولكن بعد 180 يوما سيتم إنتهاء الصلاحية / حذف الملف الذي يحتوي على التسجيل من خلال سياسة حياة مينيو.
+
+هناك نحنانية لتنظيف التخزين في مثيل OpenReplay الخاص بك: التلقائي (CLI) واليدوي.
+
+## تنظيف البيانات (CLI)
+
+يتم تنفيذ هذا العملية بشكل كامل عبر برنامج تحكم الأوامر الخاص بنا. قم بتشغيل الأمر التالي لتنظيف التخزين الخاص بك عن طريق حذف البيانات من كلا قاعدة Postgres (حيث يتم تخزين الأحداث) ومينيو (حيث يتم تخزين التسجيلات):
+
+
+```bash
+# To clean data older than 14 days
+openreplay --cleanup 14
+```
+
+
+## تنظيف البيانات (يدوي)
+
+يمكن حذف البيانات من كلا قاعدة البيانات (حيث يتم تخزين الأحداث) ومينيو (حيث يتم تخزين التسجيلات).
+
+### تنظيف التسجيلات
+
+إذا كنت تحتاج إلى إزالة بعض المساحة، فقم بتسجيل الدخول إلى مثيل OpenReplay الخاص بك واتبع الخطوات التالية:
+
+1. قم بتشغيل `k9s -n db`
+2. استخدم الأسهم للتنقل في القائمة والوصول إلى حاوية `minio-*`
+3. اضغط على `s` للوصول إلى الحاوية Minio (التخزين الكائني)
+4. قم بتشغيل `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+5. قم بتشغيل `mc rm --recursive --dangerous --force --older-than 7d minio/mobs` (أي حذف الملفات التي أقدم من 7 أيام)
+6. استخدم `exit` للخروج من حاوية Minio
+7. قم بتشغيل `:quit` للخروج من برنامج تحكم Kubernetes CLI
+
+#### تغيير سياسة الحياة الافتراضية
+
+إذا كنت تستخدم مينيو (التثبيت الفانيلا)، فيمكنك تغيير سياسة الحياة الافتراضية بهذه الطريقة:
+
+1. قم بتشغيل `k9s -n db`
+2. استخدم الأسهم للتنقل في القائمة والوصول إلى حاوية `minio-*`
+3. اضغط على `s` للوصول إلى الحاوية Minio (التخزين الكائني)
+4. قم بتشغيل `export MINIO_ACCESS_KEY=<secretKey from /var/lib/openreplay/vars.yaml>`
+5. قم بتشغيل `export MINIO_SECRET_KEY=<secretKey from /var/lib/opereplay/vars.yaml>`
+6. قم بتشغيل `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+7. لحذف التسجيلات تلقائيًا 14 يومًا بعد الإنشاء
+
+
+```bash
+export EXPIRATION_DAYS=14
+cat <<EOF > /tmp/lifecycle.json
+{
+    "Rules": [
+        {
+            "Expiration": {
+                "Days": $EXPIRATION_DAYS
+            },
+            "ID": "${bucket}",
+            "Status": "Enabled"
+        }
+    ]
+}
+EOF
+mc ilm import minio/mobs < /tmp/lifecycle.json
+```
+
+
+8. استخدم `exit` للخروج من حاوية Minio
+9. قم بتشغيل `:quit` للخروج من برنامج تحكم Kubernetes CLI
+```sql
+SELECT nspname AS "name_space",
+       relname AS "relation",
+       pg_size_pretty(
+               pg_total_relation_size(C.oid)
+           )   AS "total_size"
+FROM pg_class C
+         LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
+WHERE nspname NOT IN ('pg_catalog','information_schema')
+  AND C.relkind <> 'i'
+  AND nspname !~ '^pg_toast'
+ORDER BY pg_total_relation_size(C.oid) DESC
+LIMIT 20;
+```

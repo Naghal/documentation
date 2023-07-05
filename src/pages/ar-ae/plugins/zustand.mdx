@@ -1,0 +1,94 @@
+---
+العنوان: "Zustand"
+metaTitle: "Zustand"
+metaDescription: "البرنامج الإضافي Zustand لـ OpenReplay."
+---
+استيراد Aside من '~/components/Aside.astro'
+
+يتيح لك هذا البرنامج الإضافي التقاط التغييرات/الحالة في Zustand وفحصها لاحقًا أثناء إعادة تشغيل تسجيلات الجلسة. هذا مفيد جدًا لفهم وإصلاح المشاكل.
+
+<Aside type="tip">
+  لدينا أيضًا درسًا مفصلًا حول كيفية استخدام البرنامج الإضافي Zustand لالتقاط حالة مشروعك عند استخدام هذه المكتبة، يمكنك التحقق منه [هنا](/tutorials/zustand).
+</Aside>
+
+## التثبيت
+
+
+```bash
+npm i @openreplay/tracker-zustand
+```
+
+
+## الاستخدام
+
+قم بتهيئة حزمة `@openreplay/tracker` كالمعتاد وقم بتحميل البرنامج الإضافي إليه. استدعاء البرنامج الإضافي وضبط اسم المخزن، وسيقوم هذا بإرجاع نسخة متتبعة مسماة للمخزن التي يمكنك استدعاؤها مع عينة المخزن كمعطى لتمكين تتبع هذا المخزن.
+
+### إذا كان موقعك عبارة عن تطبيق واحد صفحة (SPA)
+
+
+```js
+import Tracker from '@openreplay/tracker';
+import trackerZustand from '@openreplay/tracker-zustand';
+```
+
+
+### إذا كان موقعك عبارة عن تطبيق منشأ على الخادم (SSR)
+
+
+```js
+import Tracker from '@openreplay/tracker/cjs';
+import trackerZustand from '@openreplay/tracker-zustand/cjs';
+```
+
+
+### تتبع مخزن Zustand
+
+
+```js
+import create from "zustand";
+
+const tracker = new Tracker({
+  projectKey: YOUR_PROJECT_KEY,
+});
+
+const zustandPlugin = tracker.use(trackerZustand())
+// name is optional, randomly generated 
+// string if its undefined
+const bearStoreLogger = zustandPlugin('bear_store')
+
+
+const useBearStore = create(
+  bearStoreLogger((set: any) => ({
+    bears: 0,
+    increasePopulation: () => set((state: any) => ({ bears: state.bears + 1 })),
+    removeAllBears: () => set({ bears: 0 }),
+  }))
+)
+```
+
+
+## الخيارات
+
+يمكنك تخصيص سلوك البرنامج الإضافي بخيارات لتجنيد بياناتك. هذه مشابهة للخيارات الخاصة بالبرنامج الإضافي القياسي `createLogger`.
+
+
+```js
+trackerZustand({
+  filter (mutation, state) {
+    // returns `true` if a mutation should be logged
+    // `mutation` is a `{ type, payload }`
+    return mutation.type !== "aBlacklistedMutation";
+  },
+  transformer (state) {
+    // transforms the state before logging it.
+    // for example return only a specific sub-tree
+    return state.subTree;
+  },
+  mutationTransformer (mutation) {
+    // mutations are logged in the format of `{ type, payload }`
+    // we can format it any way we want.
+    return mutation.type;
+  },
+})
+```
+

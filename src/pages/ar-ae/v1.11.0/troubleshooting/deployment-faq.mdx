@@ -1,0 +1,41 @@
+---
+العنوان: "أسئلة متداولة حول التثبيت"
+metaTitle: "أسئلة متداولة حول التثبيت"
+metaDescription: "أسئلة متداولة حول التثبيت (أسئلة متداولة)"
+---
+
+## لقد توقفت تثبيتي عن العمل بشكل غير متوقع
+  
+قد يكون هناك عدة أسباب لذلك. هذه هي الطرق التي يمكنك استخدامها لتصحيح الوضع:
+
+1. تحقق من استخدام القرص في فيرتوال OpenReplay. إذا كان أكثر من 80٪، فلن يعمل الخدمات.
+
+
+```bash  
+df -h
+```
+
+
+## فشل الترقية دون أي خطأ محدد
+  
+### أرى "helm أو عملية أخرى (تثبيت / ترقية / إعادة التثبيت)"
+
+وعادة ما يعني ذلك أنك قمت بإعادة محاولة عملية التثبيت / الترقية عدة مرات. قم بتشغيل الأمر التالي لحل الوضع:
+
+
+```bash
+helm rollback -n app openreplay
+```
+
+
+### لا أرى أي أخطاء، فقط "فشل التثبيت"
+
+
+```bash
+# Check for failed pods
+kubectl get pods -n app --field-selector="status.phase!=Succeeded,status.phase!=Running" -o custom-columns="POD:metadata.name"
+        
+# Check for the err logs
+stern -n app `pod name from above`
+ ```
+

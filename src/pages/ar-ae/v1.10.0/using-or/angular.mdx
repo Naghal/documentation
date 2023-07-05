@@ -1,0 +1,170 @@
+---
+العنوان: "التقاط طلبات HTTP في Angular"
+metaTitle: "تتبع طلبات HTTP في تطبيق Angular الخاص بك مع OpenReplay"
+metaDescription: "تعلم كيفية الحصول على المتتبع يعمل في تطبيق Angular الخاص بك"
+---
+استيراد GoDeeperFooter من '~/components/go-deeper-footer.astro'
+
+إذا كنت تحاول تتبع الطلبات المرسلة مع تطبيق Angular الخاص بك، فلا يوفر OpenReplay إضافة كما يفعل بالنسبة ل Fetch أو Axios.
+
+وبالرغم من ذلك، يمكنك لا سيما تهيئته لتتبع الطلبات الخاصة بك مع المعلومات التي تريدها باستخدام [HTTPInterceptor] (https://angular.io/api/common/http/HttpInterceptor).
+
+في هذا الدرس سأشاركك كيفية إنشاء HTTPInterceptor قادر على تسجيل كلا من الطلبات والاستجابات المرسلة من HTTPClient الخاص بك.
+
+## إنشاء المكافح
+
+المكافح هو نوع معين من الكائن الذي يمكنك تضمينه في كود تطبيقك للتقاط كل طلب مرسل مع HTTP client الافتراضي ل Angular والتقاط الاستجابة.
+
+من خلال هذه المنطقة، سنستفيد من الأحداث المخصصة ل OpenReplay، التي تتيح لك إرسال أي حدث تريد أن يتم التقاطه داخل جلستك، لذلك سنقوم بتشبيه ما يفعله الإضافة Fetch أو Axios لإعدادات أخرى.
+
+الكود للمكافح كما يلي:
+
+
+```tsx
+import { Injectable } from '@angular/core';
+import {
+  HttpInterceptor,
+  HttpRequest,
+  HttpHandler,
+  HttpEvent,
+  HttpResponse,
+} from '@angular/common/http';
+
+import { Observable } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
+import { ReplaySessionService } from '../replay-session.service';
+
+@Injectable({providedIn: 'root'})
+export class HttpConfigInterceptor implements HttpInterceptor {
+  constructor(
+    private replaySessionService: ReplaySessionService,
+  ) { }
+  intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+    
+		//This function will be called with the response a few lines below
+		const handleResponse = (request: HttpRequest<any>, response: HttpResponse<any>, event: string) => {
+	     //we forward our data to the service, which will create the custom event and send it
+			this.replaySessionService.sendEventToReplaySession(event, { request, response })
+    }
+    return next.handle(request).pipe(
+      //filter out events that aren't http reponses
+      filter( (event: any) => event instanceof HttpResponse),
+      map( (resp: HttpResponse<any>) => { //for each response, call handleResponse
+        handleResponse(request, resp, `${request.url}`)
+        return resp
+      }),
+      map((event: HttpEvent<any>) => {
+        return event;
+      })
+    );
+  }
+}
+```
+
+
+سننظر في خدمة الإعادة في الثانية، ولكن فقط اعتقد أنه موجود هنا الآن. احفظ هذا الملف داخل مجلد app الخاص بك.
+
+ثم حرر ملف app.module لإضافة التالي داخل تعليمة @ngModule:
+
+
+```tsx
+providers: [
+    {provide: HTTP_INTERCEPTORS, useClass: HttpConfigInterceptor, multi: true}
+  ]
+```
+
+
+لذلك يجب أن يبدو ملف app.module مثل هذا:
+
+
+```tsx
+import { NgModule } from '@angular/core';
+
+/*
+imports...
+*/
+import { HttpConfigInterceptor } from './interceptor/index';
+
+@NgModule({
+  imports: [
+   /*...*/
+  ],
+  providers: [
+    {provide: HTTP_INTERCEPTORS, useClass: HttpConfigInterceptor, multi: true}
+  ],
+  declarations: [
+    /*...*/
+  ],
+  bootstrap: [ AppComponent ]
+})
+export class AppModule { }
+```
+
+
+بخلاف هذا، يعلم التطبيق الآن أن يضيف مكافحك في كل طلب HTTP الذي يتم تنفيذه.
+
+آنذاك، دعنا ننظر الى الجلسة الفعلية لإعادة التشغيل.
+
+## إنشاء خدمة SessionReplay
+
+أولاً، أضف خدمتك الجديدة باستخدام الأمر التالي:
+
+
+```tsx
+$ ng generate service replay-session
+```
+
+
+وسينشئ خدمة Angular جديدة في الجذر من تطبيقك تسمى replay-session.service.ts
+
+يجب أن يشبه محتوى هذا الملف كما يلي:
+
+
+```tsx
+import { Injectable } from '@angular/core';
+import {
+  HttpInterceptor,
+  HttpRequest,
+  HttpHandler,
+  HttpResponse,
+} from '@angular/common/http';
+import OpenReplay from '@openreplay/tracker'
+
+type ReqRespType = {
+  request: HttpRequest<any>,
+  response: HttpResponse<any>
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ReplaySessionService {
+  tracker: OpenReplay|null = null
+
+  constructor() {
+
+    this.tracker = new OpenReplay({
+        projectKey: "<YOUR PROJECT KEY>",
+    })
+		//you can set up any other OR plugins here as well
+
+    this.tracker.start()
+   }
+
+  sendEventToReplaySession(event: string, params: ReqRespType): void {
+    const {request, response} = params
+
+    this.tracker?.event(event + "[request]", {
+      method: request.method,
+      url: request.url,
+      params: request.params
+    })
+    this.tracker?.event(event + "[response]", {
+      body: response.body,
+      status: response.status,
+      headers: response.headers
+    })
+  }
+}
+```
+

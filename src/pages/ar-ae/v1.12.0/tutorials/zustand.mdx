@@ -1,0 +1,136 @@
+عنوان: "تتبع تغييرات الحالة مع ملحق Zustand"
+MetaTitle: "Zustand"
+MetaDescription: "تتبع تغييرات الحالة مع ملحق Zustand"
+
+Zustand هو استبدال سريع وخفيف الحجم لحلول إدارة الحالة مثل Redux. مع ملحق Zustand الخاص بنا [Zustand plugin](https://www.npmjs.com/package/@openreplay/tracker-zustand)، يمكنك الاحتفاظ بتتبع تغييرات الحالة خلال دورة حياة تطبيقك.
+
+## تثبيت الملحق
+
+يمكن تثبيت الملحق بسهولة باستخدام الأمر التالي:
+
+
+```jsx
+npm i @openreplay/tracker-zustand
+```
+
+
+## استخدام الملحق في تطبيق Next.js
+
+لهذا المثال، سنستخدم نفس التطبيق الذي تم عرضه في [Next.js tutorial for our tracker](https://docs.openreplay.com/tutorials/next) لذلك إذا كنت ترغب في المزيد من التفاصيل حول المزود السياق الذي يتم استخدامه، فتحقق من ذلك أولا.
+
+**ملاحظة**: يتم تخزين كود المصدر الكامل لهذا المثال في هذا [Github repo](https://github.com/deleteman/nextjs-commerce-example/tree/zustand-store)، تحقق منه إذا كنت بحاجة إلى المزيد من التفاصيل.
+
+يتيح المزود السياق الذي يتم استخدامه تكوين الملحقات المتعقبة، لذلك بعد تثبيت الملحق، سنقوم بتعديل ملف _app.tsx عن طريق إضافة إعلان الاستيراد أدناه:
+
+
+```jsx
+import trackerZustand from '@openreplay/tracker-zustand'
+```
+
+
+وبعد ذلك، يجب أن تبدو وظيفة التطبيق الرئيسية مثل هذا:
+
+
+```jsx
+export default function MyApp({ Component, pageProps }: AppProps) {
+  const Layout = (Component as any).Layout || Noop
+
+  useEffect(() => {
+    document.body.classList?.remove('loading')
+  }, [])
+
+  let plugins = [
+    {
+      fn: trackerZustand,
+      name: 'zustand',
+    },
+  ]
+
+  return (
+    <TrackerProvider
+      config={{
+        plugins
+      }}
+    >
+      <Head />
+      <ManagedUIContext>
+        <Layout pageProps={pageProps}>
+          <Component {...pageProps} />
+        </Layout>
+      </ManagedUIContext>
+    </TrackerProvider>
+  )
+}
+```
+
+
+وسيقوم ذلك تلقائيًا ببدء الملحق مع المتعقب، وسيجعل أيضًا البيانات التي تم إرجاعها من تنفيذ وظيفة الملحق الرئيسية متاحة.
+
+الشيء التالي هو إنشاء مخزن، وسنبدأ بإضافة منتجات من موقع التجارة الإلكترونية إلى هذا المخزن في اللحظة القادمة.
+
+### إنشاء مخزن مع ملحق Zustand
+
+يتطلب استخدام الملحق تغيير الطريقة التي تستخدمها عادة لإنشاء مخزن Zustand، لذلك لا تتردد في نسخ ولصق الكود التالي كقالب:
+
+
+```jsx
+import create from 'zustand'
+
+const productStore = null
+export const useProductsStore = (logger) => {
+  if (!productStore) {
+    //use a singleton pattern to make sure we only create the store the first time around
+    productStore = createProductStore(logger)
+  }
+  return productStore
+}
+
+function createProductStore(logger) {
+  return create(
+    logger((set) => ({
+      products: [],
+      addProduct: (p) =>
+        set((state) => {
+          const prodFound = state.products.find((prod) => {
+            return p.id == prod.id
+          })
+          if (prodFound) {
+            p.amount = prodFound.amount + 1
+          } else {
+            p.amount = 1
+          }
+
+          return {
+            products: [...state.products.filter((prod) => p.id != prod.id), p],
+          }
+        }),
+    }))
+  )
+}
+```
+
+
+سينشئ الوظيفة المصدرة المخزن الأول مرة واحدة فقط، وبعد ذلك سيقوم بإرجاع المخزن الحالي.
+
+من الجانب الآخر، سينشئ وظيفة createProductStore المخزن، وسيضبط المنطق لوظيفة addProduct وسيستخدم وظيفة المسجل التي نقدمها له. هذا المسجل، كما يشبه الذي تخمنه، هو الذي نحصل عليه من استخدام ملحق Zustand.
+
+بعد أن يكون المخزن جاهزًا، يمكننا البدء في إضافة المنتجات إليه.
+
+## إضافة المنتجات إلى مخزننا
+
+يصدر المخزن وظيفة addProduct، والتي تقوم بالاحتفاظ بمنتجات العربة.
+
+لاستيراد الوظيفة في الكود الخاص بك، يجب عليك:
+
+1. استيراد واستخدام مزود السياق المتعقب.
+2. الحصول على سمة pluginsReturnedValue من السياق.
+3. استخدامه لاستدعاء وظيفة zustand (لاحظ اسم الوظيفة هو نفس اسم السمة عند تكوين الملحق أعلاه)، وإرسال سمة نصية لإعطاء المخزن اسمًا (سيتم استخدام هذا الاسم أثناء الإعادة).
+4. ستقوم وظيفة zustand بإرجاع المسج
+```jsx
+const { pluginsReturnedValues } = useContext(TrackerContext)
+
+const useProductStoreTracked = useProductsStore(
+  pluginsReturnedValues.zustand('products_store')
+)
+const { addProduct } = useProductStoreTracked()
+```

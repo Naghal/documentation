@@ -1,0 +1,71 @@
+['---\ntitle: "Secure OpenReplay"\nmetaTitle: "Secure OpenReplay"\nmetaDescription: "Secure OpenReplay by configuring SSL and reCaptcha."\n---\n\n## Configure SSL\n\nIf you\'re bringing your own certificate, create an SSL secret using the following command: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.\n\n> **Note:** If you don\'t have a certificate, generate one, that auto-renews, for your subdomain (the one provided during installation) using Let\'s Encrypt. Simply connect to OpenReplay instance, run `cd openreplay/scripts/helmcharts && bash certmanager.sh` and follow the steps.\n\nIf you wish to enable http to https redirection (recommended) edit the configuration using `openreplay -e`, then uncomment the below block, under the `ingress-nginx` section:\n   \n
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+', '\n\n> **Note:** Our `ingress-nginx` runs by default on ports `80|443`, but this can be easily changed, if needed, in `vars.yaml`:\n\n
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+', '\n\nSave and exit using `:wq` for the service to reload.\n\n## Set reCaptcha\n\nOpenReplay supports reCaptcha (v2) for additional security. To enable this protection:\n\n1. Open `/var/lib/openreplay/vars.yaml` then uncomment and update the below env variables in `chalice` section:\n- `captcha_server`: The URL to your reCaptcha service (e.g. https://www.google.com/recaptcha/api/siteverify)\n- `captcha_key`: You reCaptcha secret key\n\n2. Edit `env.js` in `openreplay/frontend/` and substitute the `CAPTCHA_SITE_KEY` variable with your reCaptcha site key.\n3. Rebuild the frontend:\n\n
+```bash
+cd openreplay/frontend
+IMAGE_TAG=my-custom-image PUSH_IMAGE=1 DOCKER_REPO=my-docker-user-name bash -x build.sh
+```
+', '\n\n4. Open `/var/lib/openreplay/vars.yaml` and specify your newly built frontend image in the `frontend` block:\n\n
+```yaml
+frontend:
+  image:
+    repository: "my-docker-username/frontend"
+    tag: "my-custom-image"
+```
+', '\n\n5. Restart the frontend and web server services for the changes to take effect:\n\n
+```bash
+ openreplay -R
+```
+', '\n\n## Content Security Policy (CSP)\n\nHere is an example of a policy (CSP) for allowing OpenReplay to record sessions. This has to be adapted depending on your domain and security requirements:\n\n
+```html
+worker-src ‘self’ blob: https://openreplay.mycompany.com https://*.openreplay.com; script-src ‘self’ https://openreplay.mycompany.com https://*.openreplay.com;
+```
+', '\n\nTo apply your CSP to NGINX, connect to your OpenReplay instance and follow the below steps:\n\n1. Run `openreplay -e` and add your CSP in the `frontend` block. Make sure to update \n\n
+```yaml
+frontend:
+  ingress:
+    cspSnippet: |
+      add_header Content-Security-Policy "worker-src 'self' blob: https://openreplay.mycompany.com https://*.openreplay.com; script-src 'self' https://openreplay.mycompany.com https://*.openreplay.com;";
+```
+', '\n\n> **Note:** Make sure to replace `https://openreplay.mycompany.com` occurences in the above CSP with your OpenReplay domain name. The value should be the same as `DOMAIN_NAME` in `/var/lib/openreplay/vars.yaml` file. \n\n2. Save and exit using `:wq` to apply your newly added CSP\n\n## Enabling CORS\n\nCross-domain requests are allowed, by default, from all origins (`Access-Control-Allow-Origin: *`). If you wish to restrict recordings from few domains only, then run `openreplay -e` and update the `http` block by adding the below annotations:\n\n
+```yaml
+http:
+  ingress:
+    annotations:
+      nginx.ingress.kubernetes.io/cors-allow-methods: POST
+      nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type,Authorization,Content-Encoding
+      nginx.ingress.kubernetes.io/cors-allow-origin: https://app1.mycompany.com,https://app2.mycompany.com,https://*.mycompany.com
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+			nginx.ingress.kubernetes.io/cors-expose-headers: "Content-Length"
+```
+']
+
+---
+العنوان: "Secure OpenReplay"
+metaTitle: "Secure OpenReplay"
+metaDescription: "Secure OpenReplay by configuring SSL and reCaptcha."
+---
+
+## تكوين SSL
+
+إذا كنت تحمل مصدرك الخاص ، فقم بإنشاء سرية SSL باستخدام الأمر التالي: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **ملاحظة:** إذا لم يكن لديك شهادة ، فأنشئ واحدة تجدد تلقائيًا لنطاقك الفرعي (الذي تم توفيره أثناء التثبيت) باستخدام Let's Encrypt. ببساطة قم بالاتصال بمثيل OpenReplay ، افحص `cd openreplay/scripts/helmcharts && bash certmanager.sh` واتبع الخطوات.
+
+إذا كنت ترغب في تمكين إعادة توجيه http إلى https (موصى به) ، فقم بتحرير التكوين باستخدام `openreplay -e` ، ثم قم بإزالة الحظر على الكتلة أدناه ، تحت قسم `ingress-nginx`:
+   \n

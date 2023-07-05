@@ -1,0 +1,165 @@
+---
+العنوان: "استخدام الملحق VueX لالتقاط التغييرات في الحالة"
+metaTitle: "استخدام الملحق VueX لالتقاط التغييرات في الحالة"
+metaDescription: "تعلم كيفية التقاط التغييرات في الحالة باستخدام الملحق VueX والتخطيط لها في تشغيلات الجلسة"
+---
+إذا كنت تستخدم VueX لإدارة حالة تطبيقاتك المبنية على Vue ، فإن دمج ملحق [OpenReplay](https://docs.openreplay.com/plugins/vuex) لمتابعة التحديثات في الحالة سهل جدا.
+
+إذا كنت ترغب في المتابعة معنا ، استخدم [الكود الذي نشر](https://github.com/deleteman/openreplay-vuex-example) هنا.
+
+## دمج المتعقب في الكود
+
+الشيء الأول الذي نحتاج إلى القلق بشأنه هو دمج متعقب OpenReplay في المشروع. نحن نتعامل مع مشروع مبني على Vue ، مما يعني أن نقطة الدخول الخاصة بنا ستكون الملف `main.js`. أولاً قم بتثبيت المتعقب مع:
+
+
+```tsx
+yarn add @openreplay/tracker
+```
+
+
+أو استخدم npm إذا كنت تفضل:
+
+
+```tsx
+npm install @openreplay/tracker
+```
+
+
+بعد ذلك ، بمجرد إعداد المشروع داخل المنصة ، احصل على مفتاح المشروع واحفظه في ملف `.env` الموجود في جذر المشروع.
+
+
+```bash
+VUE_APP_OPENREPLAY_PROJECT_KEY=<your project key here>
+```
+
+
+لاحظ اسم متغير البيئة. يبدأ بـ `VUE_APP_` لأنه عندما نفعل ذلك ، سيقوم WebPack باستبدال قيمته في أي مكان نستخدم الكود `process.env.VUE_APP_OPENREPLAY_PROJECT_KEY` لحمايتنا من الحاجة إلى شحن الملف التكوين الفعلي إلى العميل.
+
+الآن ، في مجلد `src` الخاص بك ، أنشئ مجلد `tracker` وملف `index.js` داخله. هذا الملف سيصدر وظيفة واحدة: `startTracker` التي ستكون تكوين كل شيء وبدء المتعقب.
+
+
+```jsx
+import Tracker from '@openreplay/tracker';
+
+import {v4 as uuidV4} from 'uuid'
+
+function defaultGetUserId() {
+   return uuidV4() 
+}
+
+export function startTracker(config) {
+
+    console.log("Starting tracker...")
+
+    const getUserId = (config?.userIdEnabled && config?.getUserId) ? config.getUserId : defaultGetUserId
+    let userId = null;
+
+    const trackerConfig = {
+        projectKey: config.projectKey
+    }
+
+    const tracker = new Tracker(trackerConfig);
+
+    const pluginReturns = {}
+    Object.keys(config?.plugins).forEach( pk => {
+        pluginReturns[pk] = tracker.use(config?.plugins[pk]())
+    })
+ 
+    if(config?.userIdEnabled) {
+        userId = getUserId()
+        tracker.setUserID(userId)
+    }
+    console.log("tracker: user id: ", userId)
+
+    tracker.start();
+    return {
+        tracker,
+        userId,
+        ...pluginReturns
+    }
+}
+```
+
+
+ما يجب أن تقلق بشأنه الآن هو أن هذه الوظيفة تقوم بكل ما تحتاجه. كل ما عليك القيام به هو تمرير مفتاح المشروع عند استدعائه. مثل هذا (من ملف `main.js`):
+
+
+```jsx
+import {startTracker} from './tracker/index'
+
+let {vuexTracker} = startTracker({
+    projectKey: process.env.VUE_APP_OPENREPLAY_PROJECT_KEY,
+})
+```
+
+
+كما قمنا بالنظر إليه ، سيتم استبدال سطر `process.env.VUE_APP_OPENREPLAY_PROJECT_KEY` بمفتاح المشروع الفعلي عند تكوين الصفحة.
+
+الآن ، دعنا نضيف الملحق VueX حتى نتمكن من بدء التعقب أيضًا في التغييرات في الحالة.
+
+## إضافة الملحق VueX
+
+يمكن تثبيت الملحق بسهولة بسطر واحد:
+
+
+```jsx
+yarn add @openreplay/tracker-vuex
+```
+
+
+بعد ذلك ، يمكننا استيراده في الكود الخاص بنا ، وإرساله كجزء من كائن التكوين إلى وظيفة `startTracker`.
+
+ارجع إلى تعريف هذه الوظيفة ، ولاحظ كيف يوجد لدينا كود لمعالجة الملحقات. في الواقع ، يتم تلقي الملحقات (بمفتاح من اختيارنا) في عنصر `plugins` من كائن التكوين ويتم إرجاع ما نحصل عليه من استدعاء طريقة `use` ، كما نفعل بنفس المفتاح الذي استخدمناه للملحق.
+
+دعني أريك ذلك ، هذه مرة أخرى في ملف `main.js`:
+
+
+```jsx
+//your other imports go here...
+import trackerVuex from '@openreplay/tracker-vuex';
+import store from './store'
+
+let {vuexTracker} = startTracker({
+    userIdEnabled: true,
+    projectKey: process.env.VUE_APP_OPENREPLAY_PROJECT_KEY,
+    plugins:{
+      'vuexTracker': trackerVuex
+    } 
+})
+
+new Vue({
+  router,
+  store: store([vuexTracker]),
+  render: h => h(App)
+}).$mount('#app')
+```
+
+
+لاحظ كيف نقوم:
+
+1. باستدعاء وظيفة `startTracker` مع خريطة الملحقات. السلسلة "vuexTracker" هي شيء أخرجته في الوقت الذي كنت فيه ، ولكن يمكنك استخدام أي
+```jsx
+import Vue from 'vue'
+import Vuex from 'vuex'
+
+import account from './account'
+import product from './product'
+
+Vue.use(Vuex)
+
+export default function (plugins = []) {
+  return function() {
+    const Store = new Vuex.Store({
+      modules: {
+        account,
+        product
+      },
+
+      strict: process.env.DEV,
+      plugins
+    })
+
+    return Store
+  }
+}
+```

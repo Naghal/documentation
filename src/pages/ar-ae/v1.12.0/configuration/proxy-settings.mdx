@@ -1,0 +1,36 @@
+عنوان: "إعدادات البروكسي"
+metaTitle: "إعدادات البروكسي"
+metaDescription: "إعدادات لتشغيل OpenReplay وراء بروكسي مثل NGINX أو Apache2."
+---
+
+إذا كنت تشغل OpenReplay وراء بروكسي، قم بتعديل التكوين الخاص بك بحيث يشبه الإعدادات الموضحة أدناه.
+
+## إعدادات NGINX
+
+تأكد من أن البروكسي يرسل علامات التحديد X-Forwarded-For و X-Forwarded-Proto. يجب أيضًا تمكين SSL لأنه يجب عليه أن يعمل OpenReplay. يجب أن يبدو الباقي من التكوين مثل هذا:
+
+
+```nginx
+location / {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_pass http://1.2.3.4; # replace with OpenReplay instance IP
+    }
+```
+
+
+## إعدادات Apache2
+
+تأكد من تمكين وحدات proxy، proxy_http و proxy_html. يجب أيضًا تكوين SSL، ويجب أن يبدو الباقي من الإعدادات مشابهًا لهذا:
+
+
+```apacheconf
+<VirtualHost *:443>
+    ProxyPass / http://1.2.3.4 <!-- replace with instance IP -->
+    RequestHeader set X-Forwarded-Proto expr=%{REQUEST_SCHEME}
+    # SSL + other config here
+</VirtualHost>
+```
+

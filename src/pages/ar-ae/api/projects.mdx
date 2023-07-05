@@ -1,0 +1,156 @@
+---
+العنوان: "المشاريع"
+metaTitle: "المشاريع"
+metaDescription: "كيفية إنشاء واسترداد المشاريع."
+---
+
+## إنشاء مشروع
+
+إنشاء مشروع جديد عن طريق تحديد اسمه.
+
+### الطريقة
+`POST`
+
+### الرابط
+`/api/v1/projects`
+
+### المعلمات
+
+| الاسم | النوع | الوصف |
+|----------|-------------|-------------|
+| اسم | السلسلة | اسم المشروع الذي تنشئه (على سبيل المثال MyApp، Production، Staging) (مطلوب) |
+
+### رؤوس الطلب
+
+`الترخيص: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.
+
+### أكواد الحالة
+
+`200`: الاستجابة المرسلة كبيان JSON في الجسم
+
+### طلب مثال
+
+
+```shell
+curl -X POST \
+  https://openreplay.example.com/api/v1/projects/MyFirstProject \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+  --data-raw '{
+    "name": "MyFirstProject"
+}'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "projectKey": "QsLA07Oa5sqTfwnNaFwS",
+    "name": "MyFirstProject",
+    "gdpr": {
+      "maskEmails": true,
+      "sampleRate": 50,
+      "maskNumbers": true,
+      "defaultInputMode": "plain"
+    }
+  }
+}
+```
+
+
+## الحصول على المشروع
+
+يقوم بإرجاع تفاصيل المشروع المحدد.
+
+### الطريقة
+`GET`
+
+### الرابط
+`/api/v1/projects/:projectKey`
+
+### المعلمات
+
+| الاسم | النوع | الوصف |
+|----------|-------------|-------------|
+| projectKey | السلسلة | معرف المشروع الذي تتبعه (مطلوب) |
+
+### رؤوس الطلب
+
+`الترخيص: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.
+
+### أكواد الحالة
+
+`200`: الاستجابة المرسلة كبيان JSON في الجسم
+
+### طلب مثال
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/projects/7ePSXFuQVidq9pqS6Xyn \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "projectKey": "7ePSXFuQVidq9pqS6Xyn",
+    "name": "MyFirstProject"
+  }
+}
+```
+
+
+## الحصول على المشاريع
+
+يقوم بإرجاع قائمة المشاريع الموجودة.
+
+### الطريقة
+`GET`
+
+### الرابط
+`/api/v1/projects`
+
+### رؤوس الطلب
+
+`الترخيص: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمنظمة'.
+
+### أكواد الحالة
+
+`200`: الاستجابة المرسلة كبيان JSON في الجسم
+
+### طلب مثال
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/projects \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "projectKey": "7ePSXFuQVidq9pqS6Xyn",
+    "name": "MyFirstProject"
+  },
+  {
+    "projectKey": "9cACFRuQVidq0sqS7Bny",
+    "name": "MySecondProject"
+  }
+}
+```
+

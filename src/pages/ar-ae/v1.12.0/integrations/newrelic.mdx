@@ -1,0 +1,56 @@
+العنوان: "NewRelic"
+العنوان الفرعي: "التكامل مع NewRelic"
+وصف الميتا: "كيفية التكامل مع NewRelic مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات."
+
+كيفية التكامل مع NewRelic مع OpenReplay ورؤية الأخطاء الخلفية جنبا إلى جنب مع تسجيلات الجلسات.
+
+## 1. إنشاء مفتاح الاستعلام
+
+1. سجل الدخول إلى حسابك في [NewRelic](https://newrelic.com).
+2. في الزاوية العليا اليسرى، اختر لوحة القيادة *INSIGHTS*.
+3. في لوحة القيادة *INSIGHTS*، انتقل إلى "إدارة البيانات" ثم اختر *مفاتيح API*.
+4. انقر فوق زر *+* لـ *مفاتيح الاستعلام*.
+
+![مفاتيح API لـ NewRelic](/static/newrelic-1.png#center)
+
+5. في الملاحظات، اكتب `openreplay`.
+6. انسخ `معرف الحساب` و `المفتاح`.
+7. انقر فوق *حفظ ملاحظاتك*.
+
+![مفتاح استعلام لـ NewRelic](/static/newrelic-2.png#center)
+
+## 2. تمكين NewRelic في OpenReplay
+
+الصق معرف التطبيق والمفتاح في لوحة القيادة لـ OpenReplay تحت 'التفضيلات > التكامل'.
+
+![التكامل مع NewRelic في OpenReplay](/static/newrelic-3.jpg#center)
+
+## 3. نشر openReplaySessionToken
+
+لربط حدث NewRelic مع جلسة المستخدم المسجلة، يجب نشر نص مميز من الواجهة الأمامية إلى الخلفية في كل طلب تريد تتبعه. يمكن القيام بذلك باستخدام رأس HTTP مخصص. في المثال أدناه، نستخدم وظيفة `fetch` لإرسال ذلك الرأس.
+
+
+```javascript
+const headers = {
+  Accept: 'application/json',
+  'Content-Type': 'application/json',
+};
+if (tracker.getSessionToken()) { // or window.OpenReplay instead of tracker if you're using the snippet
+  headers['X-OpenReplay-SessionToken'] = tracker.getSessionToken(); // Inject openReplaySessionToken
+}
+fetch('www.your-backend.com', {
+  'GET',
+  headers,
+});
+```
+
+
+لأجل أن يربط OpenReplay إدخال سجل NewRelic مع جلسة المستخدم المسجلة، يجب نشر نص مميز كـ `custom_parameter` إلى كل خطأ خلفي يريد تتبعه.
+
+بالأسفل هو مثال في API Python لـ NewRelic.
+
+
+```python
+newrelic.agent.add_custom_parameter("openReplaySessionToken", OPENREPLAY_SESSION_TOKEN)
+```
+

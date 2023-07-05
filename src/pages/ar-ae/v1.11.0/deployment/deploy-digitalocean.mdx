@@ -1,0 +1,86 @@
+---
+العنوان: "النشر إلى Digital Ocean"
+metaTitle: "النشر إلى Digital Ocean"
+metaDescription: "دليل خطوة بخطوة لنشر OpenReplay على Digital Ocean."
+layout: ~/layouts/MainLayout.astro
+i18nReady: true
+---
+
+يمكن تثبيت مجموعة OpenReplay على جهاز واحد (droplet) وDigital Ocean هو المرشح المثالي. هذا هو كيفية القيام بذلك.
+
+## إنشاء droplet
+
+1. إنشاء مشروع جديد (إذا لم تفعل ذلك بالفعل) ثم الانتقال إليه والنقر على droplet 'Create'
+2. اختيار صورة *Ubuntu Server 20.04 LTS*
+4. الذهاب لـ 'Shared CPU' واختيار الخطة `Regular Intel | 4 CPUs | 8GB`. هذه هي المواصفات الأدنى، وإلا لن تبدأ خدمات OpenReplay الخلفية بسهولة. هذه كافية لحجم معتدل، ولكن إذا كنت تتوقع حركة عالية، يجب عليك التزامن من هنا.
+5. انقر فوق 'New SSH key' في 'Authentication' واتبع التعليمات لإنشاء مفتاح
+6. إعطاء جهازك اسم ثم النقر على 'Create droplet'
+
+## نشر OpenReplay
+
+1. تأكد من أن droplet الخاص بك هو `active` ثم الاتصال به:
+
+
+```bash
+## From your terminal
+SSH_KEY=~/Downloads/openreplay-key.pem ## wherever you've saved the SSH key
+INSTANCE_IP=REPLACE_WITH_DROPLET_PUBLIC_IP
+chmod 400 $SSH_KEY
+ssh -i $SSH_KEY root@$INSTANCE_IP
+```
+
+
+2. تثبيت OpenReplay عن طريق توفير النطاق الذي سيتم تشغيله عليه (مثلا DOMAIN_NAME = openreplay.mycompany.com):
+
+
+```bash
+sudo wget https://raw.githubusercontent.com/openreplay/openreplay/main/scripts/helmcharts/openreplay-cli -O /bin/openreplay 
+sudo chmod +x /bin/openreplay
+openreplay -i DOMAIN_NAME
+```
+
+
+## تكوين TLS / SSL
+
+يتعامل OpenReplay مع بيانات المستخدم الحساسة وبالتالي يتطلب HTTPS للتشغيل. هذا إلزامي، وإلا لن يبدأ المتعقب بتسجيل بسهولة. نفس الشيء لوحة القيادة، دون HTTPS لن تتمكن من إعادة تشغيل جلسات المستخدم.
+
+عليك بالتالي إنشاء (أو جلب) شهادة SSL الخاصة بك.
+
+1. أولا، انتقل إلى 'Manage' > 'Networking' > 'Domains' (أو مزود خدمة إدارة DNS الآخر) وإنشاء سجل 'A'. استخدم النطاق الذي سبق أن توفرته أثناء خطوة التثبيت واقترحه إلى droplet باستخدام عنوان IP العام (يمكن العثور عليه في علامة التبويب Droplets).
+
+2. إذا كنت تجلب شهادة SSL الخاصة بك، فإنشاء سرية SSL باستخدام الأمر التالي: `kubectl create secret tls openreplay-ssl -n app --key="private_key_file.pem" --cert="certificate.crt"`.
+
+> **ملاحظة:** إذا لم يكن لديك شهادة، فإنشاء واحدة تتجدد تلقائيًا للنطاق الفرعي (الذي توفرته أثناء التثبيت) باستخدام Let's Encrypt. ببساطة الاتصال ب droplet OpenReplay، تشغيل `cd openreplay/scripts/helmcharts && bash certmanager.sh` واتبع الخطوات.
+
+3. إذا كنت ترغب في تمكين التحويل من http إلى https (موصى به)، فقم بإلغاء تعليق الكتلة أدناه، تحت جزء 'ingress-nginx'، في `/var/lib/openreplay/vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    config:
+      ssl-redirect: true
+      force-ssl-redirect: true
+```
+
+
+من المستحسن أن نذكر أن `ingress-nginx` يعمل بشكل افتراضي على المنافذ `80|443`، ولكن يمكن تغييره بسهولة، إذا لزم الأمر، في `vars.yaml`:
+
+
+```yaml
+ingress-nginx: &ingress-nginx
+  controller:
+    service:
+      ports:
+        http: 80
+        https: 443
+```
+
+
+4. وأخيرًا، إعادة تثبيت OpenReplay NGINX:
+
+
+```bash
+openreplay -R
+```
+

@@ -1,0 +1,44 @@
+['---\ntitle: "إبلاغ عن الأخطاء"\nmetaTitle: "إبلاغ عن الأخطاء"\nmetaDescription: "كيف يعمل إبلاغ عن الأخطاء، ما يتم إرساله إلى علامة التبويب 'الأخطاء' وكيفية الإبلاغ عن الأخطاء والاستثناءات يدويًا"\n---\n\nإبلاغ عن الأخطاء هو أمر حاسم لمراقبة ثبات تطبيقك والكشف عن الانحدارات قبل الوقت ومعرفة المشاكل التي تحدث لأكثر مستخدميك. بشكل افتراضي، أي استثناء غير ملغى يتم تسجيله تحت علامة التبويب 'الأخطاء':\n\n![Errors Tab](/static/errors-tab.jpg#center)\n\nبالإضافة إلى ذلك، سيظهر الأخطاء المسجلة أيضًا في تسجيل الجلسة تحت علامة التبويب 'الطرفية' في DevTools:\n\n![Exceptions Tab](/static/exceptions-tab-in-recording.jpg#center)\n\n## تسجيل الاستثناءات يدويًا\n\nيدعم محفظ OpenReplay تسجيل 3 أنواع من الأخطاء:\n* الاستثناءات الملغاة - [خطأ](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)\n* الوعود المرفوضة - [PromiseRejectionEvent](https://developer.mozilla.org/en-US/docs/Web/API/PromiseRejectionEvent)\n* أحداث الخطأ (onError) - [ErrorEvent](https://developer.mozilla.org/en-US/docs/Web/API/ErrorEvent)\n\nيمكن تقديم جميع الأخطاء المذكورة أعلاه باستخدام طريقة واحدة:\n\n
+```js
+tracker.handleError(error, metaObject); // metaObject is optional and is a flat object
+```
+', "\n\nدعونا نراجع مثالًا لكل نوع من الأخطاء:\n\n### الاستثناءات الملغاة (خطأ)\n\nبشكل افتراضي، لا يتم تسجيل الاستثناءات الملغاة إلى علامة التبويب 'الطرفية'. لإبلاغ عن خطأ، يمكننا القيام بما يلي:\n\n
+```js
+try {
+    // application code
+}
+catch(err) {
+    // application code that handles the error
+    tracker.handleError(error, metaObject); // metaObject is optional and is a flat object
+}
+```
+", '\n### الوعود المرفوضة (PromiseRejectionEvent)\n\nإذا تم رفض وعد ونريد إبلاغ عن الخطأ إلى OpenReplay، يمكننا القيام بما يلي:\n\n
+```js
+function myFunc() {
+    doSomeAsyncStuff()
+    .then((result) => {
+        // application code
+    })
+    .catch(promiseRejectionErr => {
+        // application code to handle the error
+        tracker.handleError(promiseRejectionErr, metaObject); // metaObject is optional and is a flat object     
+    })
+}
+```
+', '\n\n### onError (ErrorEvent)\n\nسيظهر هذا المثال كيفية إبلاغ عن خطأ في حالة عدم تحميل عنصر 
+```<img>```
+', ':\n\n
+```html
+<img id="myImg" src="image.gif">
+<p id="demo"></p>
+```
+', '\n\n
+```js
+document.getElementById("myImg").addEventListener("error", myFunction);
+
+function myFunction(errorEvent) {
+  document.getElementById("demo").innerHTML = "The image could not be loaded.";
+  tracker.handleError(errorEvent, { context: "demo" });
+}
+```
+']

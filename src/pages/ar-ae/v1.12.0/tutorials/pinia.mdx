@@ -1,0 +1,168 @@
+---
+العنوان: "تتبع تغييرات الحالة مع ملحق Pinia"
+metaTitle: "تتبع تغييرات الحالة مع ملحق Pinia"
+metaDescription: "ابق على تواصل مع تغييرات الحالة عند استخدام Pinia مع ملحق Pinia"
+minVersion: "1.6.0"
+---
+استيراد Aside من '~/components/Aside.astro'
+استيراد YoutubeVideo من '~/components/YoutubeVideo.astro'
+
+<YoutubeVideo title="مشاهدة كيفية تتبع الحالة مع Pinia"
+  description="إذا لم تكن تحب القراءة، يمكنك اتباع هذا الفيديو التعليمي الذي يوضح لك كيفية تتبع حالة تطبيقات Vue الخاصة بك عند استخدام Pinia"
+  videoURL="https://youtu.be/0TE5dfzz4-c"
+/>
+
+Pinia هو مكتبة ادارة الحالة البديلة لمشاريع Vue. حيث كنت تستخدم VueX، الآن ستستخدم Pinia. مع ملحق [Pinia](/plugins/pinia)، يمكنك الاحتفاظ بتغييرات الحالة خلال دورة حياة تطبيقك.
+
+## تثبيت الملحق
+
+يمكن تثبيت الملحق بسهولة باستخدام الأمر التالي:
+
+
+```jsx
+npm i @openreplay/tracker-vuex
+```
+
+
+## استخدام الملحق من داخل تطبيق Vue الخاص بك
+
+لهذا المثال، سنستخدم تطبيق Vue عين لعرض كيف يمكنك إضافة وتفاعل مع هذا الملحق داخل تطبيق واقعي.
+
+**ملاحظة**: يقع كود المصدر الكامل لهذا المثال في هذا [GitHub repo](https://github.com/deleteman/openreplay-vue-pinia-example)، تحقق منه إذا كنت بحاجة إلى المزيد من التفاصيل.
+
+بعد تثبيت الملحق، سنعدل ملف `main.js` عن طريق إضافة إفادة الاستيراد أدناه:
+
+
+```jsx
+import trackerVuex from '@openreplay/tracker-vuex/cjs';
+```
+
+
+ومن ثم، سنستخدم دالة `startTracker` لتثبيت المتعقب، واستخدام الملحق في وقت واحد.
+
+نتيجة استدعاء هذه الدالة ستكون كائنًا يحتوي على نتائج استخدام دالة `use` مع الملحق.
+
+**ملاحظة** كيف أن اسم الخاصية المفككة هو نفسه القيمة لخاصية `name`. طالما كنت تبقي هذين الشيئين متطابقين، فإنك على ما يرام.
+
+
+```jsx
+const {piniaPlugin} = startTracker({
+    projectKey: "<your project key>",
+    plugins: [{
+        name: 'piniaPlugin',
+        fn: trackerVuex
+    }]
+})
+```
+
+
+الشيء التالي هو إنشاء حاوية مخزن مسمى لاستخدامها لإعداد الملحق على المخزن المطلوب بعد ذلك.
+
+
+```jsx
+const piniaStoreWrapper = piniaPlugin("products")
+saveStore(piniaStoreWrapper)
+```
+
+
+ستحتاج حاوية المخزن Pinia لاستخدامها مع المخزن الذي نحن نحاول تتبعه. ومع ذلك، المخزن لم يتم إنشاؤه بعد في هذه اللحظة، لذلك سنحفظه من خلال دالة `saveStore`.
+
+### دوال المساعدة
+
+قبل التقدم، دعنا ننظر إلى دوال `saveStore` و `startTracker`.
+
+الأولى هي جزء من وحدة `storesManager`، والتي تبدو مثل هذا:
+
+
+```jsx
+let storeWrapper = null;
+
+export function saveStore(s) {
+    storeWrapper = s;
+}
+
+export function getStore(store) {
+    return storeWrapper;
+}
+```
+
+
+ستتيح لنا استخدام حاوية المخزن Pinia التي أنشأناها من قبل في مكان آخر.
+
+أما بالنسبة لدالة `startTracker`، فتبدو الكود مثل هذا:
+
+
+```jsx
+export function startTracker(config) {
+    console.log("Starting tracker...")
+
+    console.log("Project key used: ", config.projectKey)
+    const trackerConfig = {
+        projectKey: config.projectKey,
+         //ingestPoint: config.ingestPoint,
+        __DISABLE_SECURE_MODE: true
+    }
+
+    const tracker = new Tracker(trackerConfig);
+
+    const pluginReturns = {}
+    config?.plugins.forEach( p => {
+        console.log("Using plugin...", p.name)
+        pluginReturns[p.name] = tracker.use(p.fn())
+    })
+ 
+    tracker.start();
+    return {
+        tracker,
+        ...pluginReturns
+    }
+}
+```
+
+
+تثبت هذه الدالة المتعقب مع التكوين الذي نعطيه. لاحظ كيف تركت خيار `ingestPoint` معلقًا، وهذا لأننا نتعامل مباشرة مع نسخة SaaS، ولكن إذا كنت تبحث عن استخدام هذا الكود مع نسخة مضافة بذاتها، فستحتاج إلى تحديده، ويجب أن يبدو مثل شيء مماثل لهذا: `<your-instance>.yourhost/ingest`
+
+### تتبع مخازن Pinia الخاصة بك
+
+بمجرد أن يكون
+```jsx
+<template>
+  <!-- template code -->
+</template>
+
+<script lang="ts">
+import { computed, defineComponent, onMounted, ref } from 'vue'
+import { Product, useProductStore } from './store/products'
+import { useCartStore } from './store/cart'
+import {getStore} from './store/storesManager.js'
+
+export default defineComponent({
+  setup() {
+   
+    const productStore = useProductStore()
+    const loading = ref(true)
+    //we get the wrapper here
+	  const storeWrapper = getStore()
+
+    onMounted(async () => {
+      await productStore.fetchAll()
+      loading.value = false
+    })
+
+    const cartStore = useCartStore()
+
+		//we wrap the cart store here
+    storeWrapper(cartStore)
+    return {
+      products: computed(() => productStore.list),
+      cart: computed(() => cartStore.formattedCart),
+      total: computed(() => cartStore.total),
+      loading,
+      add: (product: Product) => cartStore.add(product),
+      remove: (product: Product) => cartStore.remove(product),
+    }
+  }
+})
+
+</script>
+```

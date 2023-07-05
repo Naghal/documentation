@@ -1,0 +1,165 @@
+---
+العنوان: "المساعدة"
+metaTitle: "المساعدة"
+metaDescription: "كيفية إعداد OpenReplay Assist ودعم مستخدمي النهاية من خلال الشاشة المباشرة وWebRTC."
+---
+
+استيراد Aside من '~/components/Aside.astro'
+
+يتيح لك OpenReplay Assist دعم مستخدميك عن طريق رؤية شاشتهم المباشرة والانتقال الفوري إلى المكالمة (WebRTC) معهم دون تطبيق أي برنامج مشاركة الشاشة ثالث.
+
+<Aside type="tip">
+  لدينا أيضًا دليلًا مفصلًا حول كيفية استخدام Assist للتفاعل مع مستخدميك بشكل مباشر، يمكنك التحقق من ذلك [هنا](/tutorials/assist).
+</Aside>
+
+## التثبيت
+
+
+```bash
+npm i @openreplay/tracker-assist
+```
+
+
+## الاستخدام
+
+### مع كود جافا سكريبت
+
+إذا كان تعقب OpenReplay الخاص بك معرف باستخدام كود جافا سكريبت، فقط استبدل الحالة `.../openreplay.js` بالحالة `.../openreplay-assist.js`. أدناه هو مثال على كيف يجب أن يبدو البرنامج بعد التغيير:
+
+
+```js
+<!-- OpenReplay Tracking Code -->
+<script>
+var initOpts = { projectKey: "GxPpaDARdn2345fgt321" };
+var startOpts = { userID: "" };
+(function(A,s,a,y,e,r){
+  r=window.OpenReplay=[e,r,y,[s-1, e]];
+  s=document.createElement('script');s.src=A;s.async=!a;
+  ...
+})("//static.openreplay.com/latest/openreplay-assist.js", 1, 0, initOpts, startOpts);
+</script>
+```
+
+
+### مع NPM
+
+قم بتهيئة المتعقب ثم قم بتحميل المكون الإضافي `@openreplay/tracker-assist`.
+
+#### إذا كان موقع الويب هو تطبيق واحد صفحة (SPA)
+
+
+```js
+import Tracker from '@openreplay/tracker';
+import trackerAssist from '@openreplay/tracker-assist';
+
+const tracker = new Tracker({
+  projectKey: PROJECT_KEY,
+});
+tracker.use(trackerAssist(options)); // check the list of available options below
+
+tracker.start();
+
+```
+
+
+#### إذا كان التطبيق الإلكتروني يتم تكوينه على الخادم (SSR)
+
+اتبع المثال أدناه إذا كان التطبيق SSR. تأكد من أن `tracker.start()` يتم استدعاؤه مرة واحدة بمجرد بدء التطبيق (في `useEffect` أو `componentDidMount`).
+
+
+```js
+import OpenReplay from '@openreplay/tracker/cjs';
+import trackerFetch from '@openreplay/tracker-assist/cjs';
+
+const tracker = new OpenReplay({
+  projectKey: PROJECT_KEY
+});
+tracker.use(trackerAssist(options)); // check the list of available options below
+
+//...
+function MyApp() {
+  useEffect(() => { // use componentDidMount in case of React Class Component
+    tracker.start();
+  }, [])
+//...
+}
+```
+
+
+## الخيارات
+
+يدعم المكون الإضافي الخيارات التالية:
+
+
+```js
+trackerAssist({
+  callConfirm?: string|ConfirmOptions;
+  controlConfirm?: string|ConfirmOptions;
+  config?: object;
+  onAgentConnect?: () => (()=>void | void);
+  onCallStart?: () => (()=>void | void);
+  onRemoteControlStart?: () => (()=>void | void);
+	onCallDeny?: () => any;
+	onRemoteControlDeny?: (agentInfo: Record<string, any>) => any;
+  onRecordingDeny?: (agentInfo: Record<string, any>) => any;
+})
+```
+
+
+### تخصيص الودجات
+
+يمكن تخصيص التحكم عن بعد وودجات المكالمة، تلك التي يراها المستخدم النهاية، بشكل كامل.
+
+#### ودجة التحكم عن بعد
+
+
+```js
+type ConfirmOptions = {
+  text?:string,
+  style?: StyleObject, // style object (i.e {color: 'red', borderRadius: '10px'})
+  confirmBtn?: ButtonOptions, 
+  declineBtn?: ButtonOptions
+}
+
+type ButtonOptions = HTMLButtonElement | string | {
+  innerHTML?: string, // to pass an svg string or text
+  style?: StyleObject, // style object (i.e {color: 'red', borderRadius: '10px'})
+}
+```
+
+
+#### ودجة المكالمة
+
+يمكن تخصيص كل جزء من هذا الودج عبر مجموعة من `ids` و `classes`. يخدم `Ids` كعلامات لأجزاء منفصلة من الأزرار / العناصر بينما يمكن استخدام `classes` لحاويات المجموعات.
+
+| نوع HTML | الاسم (الأسماء) | الوصف |
+|----------|-------------|-------------|
+|id | `or-assist` | حاوية الودجة |
+|class | `card`, `border-dark`, `shadow` و `drag-area` | الأنماط لحدود البطاقة والظل |
+|id | `controls`  | حاوية لجزء المكالمة داخل الودجة |
+|class | `card-header` | الأنماط لرأس البطاقة لودجة المكالمة (الذي يعرض اسم الوكيل بجانب مؤقت) |
+|id | `agent-name` | حاوية لاسم الوكيل |
+|id | `duration` | حاوية للمؤقت |
+|id | `video-container` | حاوية تغذية الفيديو الخاصة بالمستخدم |
+|id | `remote-stream` | تغذية الفيديو الخاصة بالوكيل |
+|class | `card-footer` | حاوية للأزرار الصامتة، الفيديو، وإنهاء المكالمة |
+|id | `audio-btn` | زر الصامت |
+|id | `video-btn` | زر الفيديو |
+|id | `end-call-btn` | زر إنهاء المكالمة |
+|id | `remote-control-row` | صف للتحكم عن بعد |
+|id | `end-control-btn` | معرف زر التحكم النهائي |
+
+### الاستدعاءات
+
+هذه هي قائمة بجميع الاستدعاءات:
+
+- `callConfirm`: تخصيص النص و / أو التخطيط لنافذة طلب المكالمة.
+- `controlConfirm`: تخصيص النص و / أو التخطيط لنافذة طلب التحكم عن بعد.
+- `config`: يحتوي على أي تكوين ICE / TURN المخصص. ال
+```js
+onAgentConnect = ({ email, name, query }) => {
+  console.log("Live session started")
+  const onAgentDisconnect =  () => console.log("Live session stopped")
+  return onAgentDisconnect
+}
+```

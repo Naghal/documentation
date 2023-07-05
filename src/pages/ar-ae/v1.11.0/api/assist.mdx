@@ -1,0 +1,209 @@
+---
+العنوان: "المساعدة"
+metaTitle: "المساعدة"
+metaDescription: "كيفية البحث عن جميع الجلسات الحية لمشروع معين."
+---
+
+## استرداد الجلسات الحية
+
+متاح فقط لإصدار المؤسسة (EE).
+
+يقوم بإرجاع قائمة الجلسات الحية لمشروع معين.
+
+### الطريقة
+
+`GET`
+
+### الرابط
+
+`/api/v1/:projectKey/assist/sessions`
+
+### المعلمات
+
+| اسم | نوع | الوصف |
+|----------|-------------|-------------|
+| projectKey | السلسلة | معرف المشروع الذي تتبعه (مطلوب) |
+
+### رؤوس الطلب
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمؤسسة'.
+
+### أكواد الحالة
+
+`200`: الاستجابة المرسلة بشكل JSON في الجسم
+
+### طلب مثال
+
+
+```shell
+curl -X GET \
+  https://openreplay.example.com/api/v1/aYYaFHiagqdXKEmVlmvJ/assist/sessions \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "total": 1,
+    "sessions": [
+      {
+        "pageTitle": "OpenReplay Blog",
+        "sessionID": "6975518573799938",
+        "metadata": {},
+        "userID": "",
+        "userUUID": "8998545b-553c-4f41-a39d-d7cba7fac2d1",
+        "projectKey": "aYYaFHiagqdXKEmVlmvJ",
+        "revID": "",
+        "timestamp": 1656437966459,
+        "trackerVersion": "3.5.11",
+        "isSnippet": true,
+        "userOs": "Mac OS",
+        "userBrowser": "Chrome",
+        "userBrowserVersion": "103.0.0.0",
+        "userDevice": null,
+        "userDeviceType": "desktop",
+        "userCountry": "FR",
+        "active": false,
+        "live": true,
+        "projectId": 3
+      }
+    ]
+  }
+}
+```
+
+
+## البحث في الجلسات الحية
+
+البحث في قائمة الجلسات الحية لمشروع معين.
+
+### الطريقة
+
+`POST`
+
+### الرابط
+
+`/api/v1/:projectKey/assist/sessions`
+
+### المعلمات
+
+| اسم | نوع | الوصف |
+|----------|-------------|-------------|
+| projectKey | السلسلة | معرف المشروع الذي تتبعه (مطلوب) |
+
+### الحمولة
+
+| اسم    | نوع            | الوصف                                                 |
+|---------|-----------------|------------------------------------------------------|
+| sort    | السلسلة          | السمة الفرز (الافتراضي:timestamp)               |
+| order   | السلسلة          | ترتيب الفرز، يمكن أن يكون "DESC" أو "ASC" (الافتراضي:DESC) |
+| page    | عدد صحيح         | رقم الصفحة للتصفح (الافتراضي:1)           |
+| limit   | عدد صحيح         | عدد الجلسات لكل صفحة (الافتراضي:200)        |
+| filters | مصفوفة من المرشح | قائمة المرشحات، تحقق الجدول التالي (الافتراضي:[])   |
+
+كائن المرشح:
+
+| اسم     | نوع                              | الوصف                                                                        |
+|----------|-----------------------------------|------------------------------------------------------------------------------------|
+| value    | مصفوفة من السلاسل غير حساسة للحالة | قائمة القيم (الافتراضي:[])                                                    |
+| type     | سلسلة غير حساسة للحالة           | سمة المرشح (مطلوب)                                                    |
+| source   | سلسلة غير حساسة للحالة           | اسم سمة البيانات ل type=metadata (الافتراضي:"")                 |
+| operator | سلسلة حساسة للحالة           | المشغل لاستخدامه لكل قيمة، يمكن أن يكون "contains" أو "is" (الافتراضي:"contains") |
+
+سيبحث البحث عن الجلسات الحية التي لها اسم سمة يحتوي على النوع المعطى ولها قيمة تحتوي على 1 من القيم المعطاة.
+
+PS: إذا كان `values=[]`؛ فسيبحث البحث عن الجلسات الحية التي لها سمة معينة.
+
+على سبيل المثال، إذا كنت تبحث عن الجلسات التي لها بيانات معينة (أي قيمة):
+
+```json
+{"value": [], "type": "METADATA", "source": "myMeta"}
+```
+
+
+### رؤوس الطلب
+
+`Authorization: {YOUR_ORGANIZATION_API_KEY}`: يمكن العثور على المفتاح في 'التفضيلات' > 'الحساب' > 'مفتاح API للمؤسسة'.
+
+### أكواد الحالة
+
+`200`: الاستجابة المرسلة بشكل JSON في الجسم
+
+### طلب مثال
+
+المثال التالي سيبحث عن الجلسات الحية الأولى 10 (فرز عكسي حسب الطابع الزمني) التي لها
+userId يحتوي على 'openreplay' و `metadata.plan` يحتوي على 'trial' أو 'free'.
+
+
+```shell
+curl -X POST \
+  https://openreplay.example.com/api/v1/aYYaFHiagqdXKEmVlmvJ/assist/sessions \
+  -H 'content-type: application/json' \
+  -H 'Authorization: {YOUR_ORGANIZATION_API_KEY}'
+  --data-raw '{
+    "filters": [
+        {
+            "value": [
+                "trial", "free"
+            ],
+            "type": "METADATA",
+            "source": "plan",
+            "operator": "is"
+        },
+        {
+            "value": [
+                "openreplay"
+            ],
+            "type": "USERID",
+            "operator": "contains"
+        }
+    ],
+    "sort": "timestamp",
+    "order": "DESC",
+    "limit": 10,
+    "page": 1
+   }'
+```
+
+
+### استجابة مثال
+
+
+```json
+{
+  "data": {
+    "total": 1,
+    "sessions": [
+      {
+        "pageTitle": "OpenReplay Blog",
+        "sessionID": "6975518573799185",
+        "metadata": {
+          "plan": "trial"
+        },
+        "userID": "dev@openreplay.com",
+        "userUUID": "8998545b-553c-4f41-a39d-d7cba7fac2d1",
+        "projectKey": "aYYaFHiagqdXKEmVlmvJ",
+        "revID": "",
+        "timestamp": 1656437966459,
+        "trackerVersion": "3.5.11",
+        "isSnippet": true,
+        "userOs": "Mac OS",
+        "userBrowser": "Chrome",
+        "userBrowserVersion": "103.0.0.0",
+        "userDevice": null,
+        "userDeviceType": "desktop",
+        "userCountry": "FR",
+        "active": false,
+        "live": true,
+        "projectId": 3
+      }
+    ]
+  }
+}
+```
+

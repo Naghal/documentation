@@ -1,0 +1,78 @@
+---
+العنوان: "إصدارات مهملة"
+metaTitle: "إصدارات مهملة"
+metaDescription: "الإصدارات السابقة إلى v1.4.0 مهملة."
+layout: ~/layouts/MainLayout.astro
+i18nReady: صحيح
+---
+
+إذا كنت ترغب في ترقية نسخة OpenReplay الخاصة بك إلى أحدث إصدار، فتأكد من أنك تعمل على إصدار يكون أفضل أو مساوي لـ `v1.4.0`. إذا لم يكن هذا الحال، فأنت على إصدار مهمل ويجب عليك أولاً ترقيته إلى `v1.4.0` قبل أن تتمكن من الذهاب إلى أي إصدار حديث (v1.8.0+).
+
+## ترقية الخلفية (من v1.3.6 أو أقدم) إلى v1.4.0
+
+أولاً، تأكد من أنك على `v1.3.6` أو أقدم. إذا كان هذا الحال، فتجاهل الأوامر أدناه وانتقل إلى الخطوة 1). إذا لم يكن هذا الحال، فقم بتحديث تثبيت OpenReplay الخاص بك إلى `v1.3.6`:
+
+
+```bash 
+# Copy/backup the current openreplay folder to _version-number
+mv openreplay openreplay_v1.3.5
+git clone https://github.com/openreplay/openreplay -b v1.3.6
+cd openreplay/scripts/helm
+# bash upgrade.sh <old openreplay path>
+bash upgrade.sh ~/openreplay_v1.3.5
+```
+
+
+بمجرد الوصول إلى `v1.3.6`، فانتقل إلى الخطوات التالية:
+
+1. نسخ / النسخ الاحتياطي لمجلد openreplay الحالي إلى `_version-number` مثل أدناه:
+
+
+```bash 
+  mv openreplay openreplay_v1.3.6
+  ```
+
+
+2. استنساخ أحدث إصدار OpenReplay. في هذا المثال، نقوم بترقية إلى v1.4.0:
+
+
+```bash 
+  git clone https://github.com/openreplay/openreplay -b v1.4.0
+  ```
+
+
+3. شغل البرنامج النصي أدناه لترقية `vars.yaml` الخاص بك إلى التنسيق الجديد تلقائيًا:
+
+
+```bash
+  cd openreplay/scripts/helmcharts
+  ansible localhost -m template -a "src=vars_template.yaml dest=vars.yaml" -e @~/openreplay_v1.3.6/scripts/helm/vars.yaml
+  ```
+
+
+4. ترقية OpenReplay:
+
+
+```bash
+  cd openreplay/scripts/helmcharts
+  helm ls -n app | tail -n +2 | awk '{print $1}' | xargs -I{} helm uninstall {} -n app
+  helm uninstall nginx-ingress -n nginx-ingress
+  helm upgrade --install openreplay ./openreplay -n app -f vars.yaml --atomic --set forceMigration=true
+  ```
+
+
+5. إذا لم تستخدم توازن الأحمال ولم تنشئ شهادة SSL عبر برنامج الشهادات `certmanager.sh`:
+
+
+```
+  cd openreplay/scripts/helmcharts && bash certmanager.sh
+  ```
+
+
+6. حدث متغير `fromVersion` في `/openreplay/scripts/helmcharts/vars.yaml` لتعكس الإصدار الجديد. كمثال، إذا كنت تنتقل من `v1.3.6` إلى `v1.4.0`، فحدث متغير `fromVersion` مثل أدناه:
+
+
+```yaml
+  fromVersion: "v1.4.0"
+  ```
+

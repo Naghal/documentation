@@ -1,0 +1,114 @@
+
+```bash
+# To clean data older than 14 days
+openreplay --cleanup 14
+```
+
+عنوان: "تنظيف التخزين"
+metaTitle: "تنظيف التخزين"
+metaDescription: "حذف التسجيلات بالجملة من قاعدة البيانات وتنظيف التخزين الخاص بك."
+---
+استيراد من '~/components/Aside.astro'
+
+يتم تخزين كل تسجيل في شكل ملف ومدخل في قاعدة البيانات. يفرغ OpenReplay ما هو ضروري لإعادة تشغيل جلسة (تغييرات DOM، إحداثيات الفأرة، سجلات الطرفية، نشاط الشبكة وأكثر من ذلك) إلى 3 ملفات (2 للإعادة تلقائية و1 لبيانات DevTools). يتم تخزين هذه الملفات بشكل افتراضي على المثيل الخاص بك، لذلك يشكلون معظم التخزين. سيتم تخزين بيانات البيانات الخاصة بالجلسة في قاعدة بيانات PostgreSQL إلى الأبد، ولكن بعد 180 يوما سيتم إنتهاء الملف الذي يحتوي على التسجيل عبر سياسة حياة مينيو.
+
+هناك نحنان لتنظيف التخزين في مثيل OpenReplay الخاص بك: التلقائي (CLI) واليدوي.
+
+## تنظيف البيانات (CLI)
+
+يتم تنفيذ هذا العمل بشكل كامل عبر سطر الأوامر الخاص بنا. قم بتشغيل الأمر التالي لتنظيف التخزين الخاص بك عن طريق إزالة البيانات من كلا Postgres (حيث يتم تخزين الأحداث) ومينيو (حيث يتم تخزين التسجيلات):
+
+
+```bash
+export EXPIRATION_DAYS=14
+export DELETE_JOB_DAYS=$((EXPIRATION_DAYS>30 ? 30 : EXPIRATION_DAYS))
+cat <<EOF > /tmp/lifecycle.json
+{
+  "Rules": [
+    {
+      "Expiration": {
+        "Days": $EXPIRATION_DAYS
+      },
+      "ID": "Delete old mob files",
+      "Status": "Enabled"
+    },
+    {
+      "Expiration": {
+        "Days": $DELETE_JOB_DAYS
+      },
+      "ID": "Delete flagged mob files after ${DELETE_JOB_DAYS} days",
+      "Filter": {
+        "Tag": {
+          "Key": "to_delete_in_days",
+          "Value": "${DELETE_JOB_DAYS}"
+        }
+      },
+      "Status": "Enabled"
+    }
+  ]
+}
+EOF
+mc ilm import minio/mobs < /tmp/lifecycle.json
+```
+
+
+## تنظيف البيانات (يدوي)
+
+يمكن إزالة البيانات من كلا قاعدة البيانات (حيث يتم تخزين الأحداث) ومينيو (حيث يتم تخزين التسجيلات).
+
+### تنظيف التسجيلات
+
+إذا كنت تحتاج إلى إزالة بعض المساحة، فقم بتسجيل الدخول إلى مثيل OpenReplay الخاص بك واتبع الخطوات التالية:
+
+1. قم بتشغيل `k9s -n db`
+2. استخدم الأسهم للتنقل في القائمة والوصول إلى حاوية `minio-*`
+3. اضغط على `s` للوصول إلى الحاوية Minio (التخزين الكائني)
+4. قم بتشغيل `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+5. قم بتشغيل `mc rm --recursive --dangerous --force --older-than 7d minio/mobs` (أي حذف الملفات التي أقدم من 7 أيام)
+6. استخدم `exit` للخروج من حاوية Minio
+7. قم بتشغيل `:quit` للخروج من سطر الأوامر Kubernetes
+
+#### تغيير سياسة الحياة الافتراضية
+
+إذا كنت تستخدم مينيو (التثبيت الطبيعي)، فيمكنك تغيير سياسة الحياة الافتراضية بهذه الطريقة:
+
+1. قم بتشغيل `k9s -n db`
+2. استخدم الأسهم للتنقل في القائمة والوصول إلى حاوية `minio-*`
+3. اضغط على `s` للوصول إلى الحاوية Minio (التخزين الكائني)
+4. قم بتشغيل `mc alias set minio http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY`
+5. لحذف التسجيلات تلقائيًا 14 يومًا بعد الإنشاء
+
+
+```sql
+SELECT nspname AS "name_space",
+       relname AS "relation",
+       pg_size_pretty(
+               pg_total_relation_size(C.oid)
+           )   AS "total_size"
+FROM pg_class C
+         LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
+WHERE nspname NOT IN ('pg_catalog','information_schema')
+  AND C.relkind <> 'i'
+  AND nspname !~ '^pg_toast'
+ORDER BY pg_total_relation_size(C.oid) DESC
+LIMIT 20;
+```
+
+```sql
+--- To delete all data related to a specific event
+
+-- The next 2 tables are usually the biggest ones, and they affect some cards only
+TRUNCATE TABLE events.resources;
+TRUNCATE TABLE events_common.requests;
+
+-- The next table will affect click-maps and events list of session's replay
+TRUNCATE TABLE events.clicks;
+TRUNCATE TABLE events.errors;
+TRUNCATE TABLE events.graphql;
+TRUNCATE TABLE events.inputs;
+TRUNCATE TABLE events.pages;
+TRUNCATE TABLE events.performance;
+TRUNCATE TABLE events.state_actions;
+TRUNCATE TABLE events_common.customs;
+TRUNCATE TABLE events_common.issues;
+```

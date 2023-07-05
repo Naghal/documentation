@@ -1,0 +1,62 @@
+---
+العنوان: "MobX"
+MetaTitle: "MobX"
+MetaDescription: "المكون الإضافي MobX لـ OpenReplay."
+---
+
+يتيح لك هذا المكون الإضافي التقاط التغييرات في `MobX` وفحصها لاحقًا أثناء إعادة تشغيل تسجيلات الجلسات. هذا مفيد لفهم وإصلاح المشاكل.
+
+## التثبيت
+
+
+```bash
+npm i @openreplay/tracker-mobx
+```
+
+
+## الاستخدام
+
+قم بتهيئة حزمة `@openreplay/tracker` كالمعتاد وقم بتحميل المكون الإضافي إليه.
+ثم استخدم القيمة المرتجعة لتتبع المراقبين MobX.
+
+
+```js
+import { observable, observe } from 'mobx';
+import Tracker from '@openreplay/tracker';
+import trackerMobX from '@openreplay/tracker-mobx';
+
+const tracker = new Tracker({
+  projectKey: YOUR_PROJECT_KEY,
+});
+
+// this instance can be exported and used for multiple stores
+const mobxObserver = tracker.use(trackerMobX({ ...options }));
+
+const myArray = observable(['foo', 'bar', 42]);
+
+observe(myArray, mobxObserver)
+
+myArray.push("Hello world"); // This mutation will be tracked
+```
+
+
+## الخيارات
+
+يمكنك تخصيص سلوك وسائل الحصول لتنظيف البيانات الخاصة بك.
+
+
+```js
+interface Options {
+    predicate?: (observeEvent: { type: string; name: string; object: any; debugObjectName: string }) => boolean;
+    sanitize?: (resultAction: { state: any; type: string; property: string }) => { state: any; type: string; property: string };
+    update?: boolean;
+    add?: boolean;
+    delete?: boolean;
+}
+
+trackerMobX({
+  predicate: () => true,
+  sanitize: (event) => event
+})
+```
+

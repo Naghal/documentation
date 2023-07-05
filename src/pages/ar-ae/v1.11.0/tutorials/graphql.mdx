@@ -1,0 +1,171 @@
+---
+العنوان: "استخدام الملحق GraphQL"
+MetaTitle: "استخدام الملحق GraphQL لالتقاط وتنظيف معلومات العملية"
+MetaDescription: "تعلم كيفية إعداد الملحق GraphQL وفي تطبيق React الخاص بك"
+---
+إذا كنت تستخدم GraphQL كلغة استعلام لواجهات API الخاصة بك من داخل تطبيقك ، فيمكن للملحق [GraphQL](https://docs.openreplay.com/plugins/graphql) مساعدتك في تتبع كل من التحويلات والاستعلامات التي تم تنفيذها ضد خادم GraphQL الخاص بك.
+
+في هذا الدرس ، سنستخدم مشترك Apollo Boost ، ولكن طالما كان المشترك الذي تستخدمه يسمح لك بإعداد بعض الوسائط الأوسط ، فستتمكن من استخدام الملحق في كودك.
+
+إذا كنت ترغب في المتابعة ، يمكنك [التحقق من هذا المستودع](https://github.com/deleteman/openreplay-graphql-example) الذي يحتوي على الخادم GraphQL والتطبيق المشترك.
+
+## إعداد المسجل أولا
+
+قبل تثبيت الملحق GraphQL ، ستحتاج إلى تثبيت المسجل. إذا كنت تعرف كيفية القيام بذلك ، فتخطى إلى القسم التالي ، وإلا فاستمر في القراءة.
+
+سنحفظ هذا الكود داخل وحدة منفصلة تصدر الدالتين: "init" و "start".
+
+الدالة الأولى ستكون لإنشاء المسجل وإعداد جميع الملحقات ؛ الدالة الثانية ستدعو فقط طريقة "start".
+
+
+```jsx
+import OpenReplay from '@openreplay/tracker';
+
+let _tracker = null;
+
+export function init({plugins}) {
+
+    _tracker = new OpenReplay({
+        projectKey: process.env.OPENREPLAY_PROJECT_KEY
+    });
+
+    
+    let pluginResults = {}
+    if(plugins) {
+        Object.keys(plugins).forEach( pk => {
+            pluginResults[pk] = _tracker.use(plugins[pk]())
+        })
+    }
+    return pluginResults
+}
+
+export function start() {
+    return _tracker.start()
+}
+```
+
+
+الجزء المثير للاهتمام في الدالة init ، هو أنها تعود بكائن مؤلف من كل قيم الملحقات المعادة. بعض ملحقاتنا ستعود بدالة ستحتاج لاستخدامها لاحقًا (مثل في حالة الملحق GraphQL). يسمح هذا النهج بتهيئة المسجل مع جميع الملحقات في وقت واحد ، ومن ثم استخدام القيم المعادة كلما أردت.
+
+## استخدام الملحق
+
+بعد تثبيت الملحق مع npm i @openreplay/tracker-graphql استخدم الكود التالي لاستدعاء الدالة init التي تعرفناها أعلاه:
+
+
+```jsx
+import trackerGraphQL from '@openreplay/tracker-graphql';
+import {init} from './tracker/index'
+
+const {graphqlTracker} = init({
+  plugins: { 
+    graphqlTracker: trackerGraphQL
+  }
+})
+```
+
+
+المفتاح graphqlTracker المستخدم هنا يمكن أن يكون أي شيء تريده. طالما كان المفتاح المستخدم داخل قسم "plugins" هو نفس المفتاح الذي تتحوله من نتائج دالة init ، فستكون على ما يرام.
+
+## إعداد الملحق مع مشترك Apollo
+
+لهذا الدرس ، سنستخدم مكتبة Apollo Boost ، والتي تسمح لك بتعديل تدفق البيانات لكل طلب ما يسمى ب "الروابط".
+
+هذه الروابط مثل دوال الوسائط الأوسط التي يمكنك استخدامها لتشغيل تدفق البيانات لطلب و، في حالتنا ، تسجيله.
+
+سينشئ الكود التالي رابطًا جديدًا باستخدام دالة ApolloLink. هذا الرابط سيقوم بالتقاط بيانات ونتائج العملية ، واستدعاء دالة graphqlTracker الخاصة بنا (الدالة المعادة من دالة init أعلاه).
+
+
+```jsx
+const trackerApolloLink = new ApolloLink((operation, forward) => {
+
+  const operationDefinition = operation.query.definitions[0];
+  let {operationName, variables} = operation
+  const {kind, operation: op} = operationDefinition
+  const opKind = kind === 'OperationDefinition' ? op : 'unknown?'
+
+  let results = forward(operation).map((result) => {
+    return graphqlTracker(opKind, operationName, variables, result);
+  });
+  if(results.length === 0) { //if there are no results, then we've not tracked anything so far...
+    graphqlTracker(opKind, operationName, variables, {});
+  }
+  return results
+});
+```
+
+
+بعد ذلك ، يمكننا استخدام الرابط الجديد كما يلي:
+
+
+```jsx
+import {ApolloClient,  HttpLink } from 'apollo-boost';
+import { ApolloProvider } from '@apollo/react-hooks';
+import { InMemoryCache } from 'apollo-cache-inmemory';
+import { ApolloLink, from } from '@apollo/client';
+
+const link = from([
+  trackerApolloLink,
+  new HttpLink({uri: () => 'http://localhost:4000/graphql'}),
+]);
+
+const client = new ApolloClient({
+  link,
+  cache: new InMemoryCache()
+});
+
+ReactDOM.render(<ApolloProvider client={client}>
+  <App />
+</ApolloProvider>, document.getElementById('root'));
+```
+
+
+الكود أعلاه مأخوذ من وثائق Apollo ، في هذه النقطة المسجل والملحق مضبوطين بالفعل ، لذلك لا تحتاج إلى القلق بشأن أي شيء آخر.
+
+بمجرد الانتهاء ، ستظهر عروضك قسمًا جديدًا يحتوي عل
+```jsx
+/**
+ * Sanitize the result from a GraphQL operation
+ * @returns Returns the result object but with the sanitized fields changed.
+ */
+function sanitizeResult(res) {
+  //deep clonning needs to happen to make sure this only affects the new object and not
+  //the original object.
+  let sanitized = JSON.parse(JSON.stringify(res))
+
+  let ops = Object.keys(sanitized.data)
+  ops.forEach( o => {
+    if(Array.isArray(sanitized.data[o])) { //mutations don't really return arrays
+      sanitized.data[o] = sanitized.data[o].map( sanitizeData )
+    }
+  })
+  return sanitized
+}
+
+// We only want to hide the content of othe "email" field for now.
+function sanitizeData(vars) {
+  let newVars = {...vars}
+  if(newVars.email) {
+    newVars.email = "****@***.***"
+  }
+  return newVars
+}
+
+const trackerApolloLink = new ApolloLink((operation, forward) => {
+
+  const operationDefinition = operation.query.definitions[0];
+  let {operationName, variables} = operation
+  const {kind, operation: op} = operationDefinition
+  const opKind = kind === 'OperationDefinition' ? op : 'unknown?'
+
+  let trackedVariables = sanitizeData({...variables})
+  let results = forward(operation).map((result) => {
+    let trackeresults = sanitizeResult(result)
+    graphqlTracker(opKind, operationName, trackedVariables, trackeresults);
+    return result //we have to return the original "result" object here, not the sanitized one
+  });
+  if(results.length === 0) { //if there are no results, then we've not tracked anything so far...
+    graphqlTracker(opKind, operationName, trackedVariables, {});
+  }
+  return results
+});
+```
