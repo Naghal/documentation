@@ -1,3 +1,25 @@
+---
+setup: |
+    import Button from '../../components/Button.astro'
+    import ContributorList from '../../components/ContributorList.astro'
+    import PackageManagerTabs from '~/components/tabs/PackageManagerTabs.astro'
+    
+
+layout: ~/layouts/MainLayout.astro
+title: Getting Started
+description: A basic intro to Astro.
+i18nReady: true
+---
+import Aside from '~/components/Aside.astro'
+import { YouTube } from 'astro-embed'
+import Card from '~/components/Card'
+
+<h2>¿Qué es OpenReplay?</h2>
+
+<Aside type="tip" title=" ¿Sabías que?">
+    text here...
+    </Aside>
+
 INTRO
 :::tip[¿Sabías?]
 Astro te ayuda a construir sitios web más rápidos con la "Arquitectura de Islas".
@@ -11,3 +33,5 @@ Debido a problemas en la parte superior de Prettier, el plugin no se detectará 
 prettier --write --plugin-search-dir=. .
 ```
 
+También se requieren ajustes adicionales cuando se usa Prettier dentro de VS Code. Consulte el README del complemento para obtener más información.
+:::

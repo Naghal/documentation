@@ -1,3 +1,35 @@
-El amor es una cosa maravillosa.
+---
+title: "Plugins"
+metaTitle: "Plugins"
+metaDescription: "Cómo configurar los plugins de OpenReplay para depurar mejor la aplicación y ayudar a los usuarios finales."
+---
+import ORCard from '~/components/Card/ORCard.astro'
+import IconText from '~/components/Card/IconText.astro'
 
-El amor es algo maravilloso.
+Conozca los diferentes plugins para capturar el almacén de su aplicación, supervisar las consultas, realizar un seguimiento de los problemas de rendimiento e incluso ayudar a su usuario final a través de sesiones en directo.
+
+## User on-boarding and support
+<div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-3">
+<ORCard url="/plugins/assist" title="Assist" description="Incorpore y preste asistencia a sus usuarios finales a través de pantalla en directo y vídeo/voz. (WebRTC)." />
+</div>
+
+## Store Management
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 card">
+<IconText url="/plugins/redux" title="Redux"/>
+<IconText url="/plugins/vuex" title="VueX"/>
+<IconText url="/plugins/pinia" title="Pinia" />
+<IconText url="/plugins/ngrx" title="ngRx" />
+<IconText url="/plugins/zustand" title="Zustand" />
+</div>
+
+## Queries
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3">
+<ORCard url="/plugins/fetch" title="Fetch"  width="30" description="Seguimiento de fetch requests y responses." width="30"/>
+<ORCard url="/plugins/axios" title="Axios"  width="30" description="Seguimiento de axios (XHR) requests y responses." width="30"/>
+<ORCard url="/plugins/graphql" title="GraphQL"  width="30" description="Depurar GraphQL queries (Apollo and Relay)" width="30"/>
+</div>
+
+## Performance
+<div class="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-3">
+<ORCard url="/plugins/profiler" title="Profiler"   description="Seguimiento del rendimiento de las funciones JS."/>
+</div>
